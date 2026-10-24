@@ -1,0 +1,15 @@
+{
+  "title": "Spaghetti Carbonara",
+  "summary": "Roman classic: eggs, pecorino, guanciale and lots of pepper. No cream.",
+  "servings": 2, "total_minutes": 25, "tags": ["pasta", "weeknight"],
+  "ingredients": [{"item": "spaghetti", "qty": "200 g"}, {"item": "guanciale or pancetta", "qty": "100 g"}, {"item": "eggs", "qty": "2 + 1 yolk"},
+    {"item": "pecorino romano, grated", "qty": "50 g"}, {"item": "black pepper", "qty": "1 tsp"}, {"item": "salt for the pasta water", "qty": "1 tbsp"}],
+  "steps": [
+    {"text": "Bring a large pot of well-salted water to a boil.", "minutes": 8, "timer": true, "check": "rolling boil"},
+    {"text": "While it heats, whisk the eggs, yolk, pecorino and black pepper in a bowl.", "minutes": 3, "timer": false},
+    {"text": "Cook the guanciale in a dry pan over medium heat until crisp.", "minutes": 6, "timer": true, "check": "golden, fat rendered"},
+    {"text": "Cook the spaghetti until one minute short of al dente.", "minutes": 9, "timer": true},
+    {"text": "Off the heat, toss the pasta with the guanciale and a splash of pasta water, then stir in the egg mixture fast.", "minutes": 2, "timer": false, "check": "glossy sauce, no scrambled egg"},
+    {"text": "Serve right away with more pecorino and pepper.", "minutes": 1, "timer": false}
+  ]
+}

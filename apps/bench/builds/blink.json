@@ -1,0 +1,10 @@
+{
+  "title": "Blink an LED (Arduino / UNO Q)",
+  "steps": [
+    {"text": "Place the LED on the breadboard. Long leg is the anode (+).", "check": "LED in breadboard"},
+    {"text": "Connect a 220 ohm resistor from the LED's short leg (cathode) to the ground rail.", "check": "resistor bridges cathode row and ground rail"},
+    {"text": "Wire digital pin 13 to the LED's long leg.", "check": "jumper from pin 13 to anode row"},
+    {"text": "Wire the board's GND to the breadboard ground rail.", "check": "ground jumper present"},
+    {"text": "Upload the Blink sketch and confirm the LED flashes once per second.", "check": "LED lit"}
+  ]
+}

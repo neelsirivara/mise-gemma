@@ -1,0 +1,17 @@
+{
+  "title": "Shakshuka",
+  "summary": "Eggs poached in a spiced tomato and pepper sauce. One pan.",
+  "servings": 2, "total_minutes": 30, "tags": ["one-pan", "vegetarian", "brunch"],
+  "ingredients": [{"item": "olive oil", "qty": "2 tbsp"}, {"item": "onion", "qty": "1"}, {"item": "red bell pepper", "qty": "1"}, {"item": "garlic", "qty": "3 cloves"},
+    {"item": "cumin", "qty": "1 tsp"}, {"item": "paprika", "qty": "1 tsp"}, {"item": "crushed tomatoes", "qty": "400 g can"}, {"item": "eggs", "qty": "4"},
+    {"item": "salt", "qty": "1/2 tsp"}, {"item": "feta and parsley", "qty": "to serve"}],
+  "steps": [
+    {"text": "Dice the onion and pepper and mince the garlic.", "minutes": 4, "timer": false},
+    {"text": "Sauté the onion and pepper in olive oil over medium heat until soft.", "minutes": 7, "timer": true, "check": "onions translucent"},
+    {"text": "Add garlic, cumin and paprika and stir until fragrant.", "minutes": 1, "timer": true},
+    {"text": "Pour in the tomatoes, season with salt, and simmer until slightly thickened.", "minutes": 8, "timer": true, "check": "a spoon leaves a trail"},
+    {"text": "Make four wells and crack an egg into each.", "minutes": 2, "timer": false},
+    {"text": "Cover and cook until the whites are set but the yolks are runny.", "minutes": 6, "timer": true, "check": "whites opaque, yolks shiny"},
+    {"text": "Top with crumbled feta and parsley and serve with bread.", "minutes": 1, "timer": false}
+  ]
+}

@@ -1,0 +1,12 @@
+litert-lm-api>=0.18.1
+openvino>=2026.4          # Intel NPU dispatch for LiteRT
+huggingface_hub
+fastapi
+uvicorn[standard]
+python-multipart
+ollama                    # fallback engine only
+pillow
+numpy
+cryptography              # local HTTPS for phone mode
+qrcode                    # setup-page QR codes
+playwright                # scripts/ui_test.py (drives installed Chrome/Edge)

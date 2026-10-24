@@ -1,0 +1,10 @@
+.venv/
+models/
+.litert_cache/
+__pycache__/
+*.pyc
+.certs/
+assets/ui_test/
+data/
+.claude/
+*.tmp

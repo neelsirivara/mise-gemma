@@ -1,0 +1,15 @@
+{
+  "title": "Guacamole",
+  "summary": "Chunky, bright and done in fifteen minutes. No stove needed.",
+  "servings": 4, "total_minutes": 15, "tags": ["no-cook", "vegetarian", "snack"],
+  "ingredients": [{"item": "ripe avocados", "qty": "3"}, {"item": "lime", "qty": "1"}, {"item": "red onion", "qty": "1/2"},
+    {"item": "roma tomato", "qty": "1"}, {"item": "jalapeño (optional)", "qty": "1"}, {"item": "cilantro", "qty": "1 handful"}, {"item": "salt", "qty": "1/2 tsp"}],
+  "steps": [
+    {"text": "Finely dice the red onion and let it soak in the juice of the lime.", "minutes": 3, "timer": false, "check": "onion diced small, sitting in lime juice"},
+    {"text": "Halve the avocados, remove the pits, and scoop the flesh into a bowl.", "minutes": 3, "timer": false, "check": "avocado flesh in bowl, no pits"},
+    {"text": "Mash the avocado with a fork, leaving it a bit chunky.", "minutes": 2, "timer": false, "check": "mashed, some chunks remain"},
+    {"text": "Dice the tomato and jalapeño and chop the cilantro.", "minutes": 4, "timer": false},
+    {"text": "Fold everything in with the salt, then taste and adjust lime and salt.", "minutes": 2, "timer": false},
+    {"text": "Let it sit so the flavors come together.", "minutes": 1, "timer": true}
+  ]
+}

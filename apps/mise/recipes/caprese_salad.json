@@ -1,0 +1,12 @@
+{
+  "title": "Caprese Salad",
+  "summary": "Tomato, mozzarella and basil. Five minutes, very pretty.",
+  "servings": 2, "total_minutes": 6, "tags": ["no-cook", "vegetarian", "salad"],
+  "ingredients": [{"item": "large tomatoes", "qty": "2"}, {"item": "fresh mozzarella", "qty": "200 g"}, {"item": "basil leaves", "qty": "1 handful"},
+    {"item": "olive oil", "qty": "2 tbsp"}, {"item": "balsamic glaze", "qty": "1 tsp"}, {"item": "flaky salt", "qty": "1 pinch"}, {"item": "black pepper", "qty": "to taste"}],
+  "steps": [
+    {"text": "Slice the tomatoes and mozzarella into 1 cm rounds.", "minutes": 3, "timer": false},
+    {"text": "Alternate tomato, mozzarella and basil on a plate in overlapping rows.", "minutes": 2, "timer": false},
+    {"text": "Drizzle with olive oil and balsamic glaze, then finish with flaky salt and pepper.", "minutes": 1, "timer": false}
+  ]
+}
