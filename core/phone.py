@@ -96,6 +96,40 @@ def _server_cert(ips: list[str]):
     _write(SRV_CERT, cert.public_bytes(serialization.Encoding.PEM) + ca_cert.public_bytes(serialization.Encoding.PEM))
 
 
+def _mobileconfig() -> bytes:
+    """An Apple configuration profile wrapping the CA. iOS always treats this as an installable profile,
+    whereas a bare .crt sometimes lands in the Files app instead."""
+    import base64
+    import uuid as _uuid
+    cert = x509.load_pem_x509_certificate(CA_CERT.read_bytes())
+    der = cert.public_bytes(serialization.Encoding.DER)
+    fp = cert.fingerprint(hashes.SHA256()).hex()
+    u1, u2 = (str(_uuid.uuid5(_uuid.NAMESPACE_URL, f"mise-ca-{fp}-{n}")).upper() for n in (1, 2))
+    b64 = base64.encodebytes(der).decode()
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>PayloadContent</key><array><dict>
+    <key>PayloadCertificateFileName</key><string>mise-local-ca.cer</string>
+    <key>PayloadContent</key><data>{b64}</data>
+    <key>PayloadDescription</key><string>Lets this phone trust the Mise hub running on your laptop.</string>
+    <key>PayloadDisplayName</key><string>Mise local CA</string>
+    <key>PayloadIdentifier</key><string>local.mise.ca.cert</string>
+    <key>PayloadType</key><string>com.apple.security.root</string>
+    <key>PayloadUUID</key><string>{u1}</string>
+    <key>PayloadVersion</key><integer>1</integer>
+  </dict></array>
+  <key>PayloadDescription</key><string>Trust the Mise hub on your laptop so the app can use HTTPS on your local network.</string>
+  <key>PayloadDisplayName</key><string>Mise local CA</string>
+  <key>PayloadIdentifier</key><string>local.mise.ca</string>
+  <key>PayloadRemovalDisallowed</key><false/>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadUUID</key><string>{u2}</string>
+  <key>PayloadVersion</key><integer>1</integer>
+</dict></plist>
+""".encode()
+
+
 def _qr_svg(text: str) -> str:
     img = qrcode.make(text, image_factory=qrcode.image.svg.SvgPathImage, box_size=8, border=2)
     b = io.BytesIO()
@@ -120,12 +154,16 @@ code{{background:#1e222b;padding:2px 6px;border-radius:6px}}
 <p class="muted">The models run on this laptop. Your phone is the camera, mic and screen, over your local network.
 Nothing goes to the internet.</p>
 <h2>1 · Trust this laptop (once per phone)</h2>
-<p><a class="btn" href="/mise-local-ca.crt">Download certificate</a></p>
+<p><b>iPhone</b> (open this page in <b>Safari</b>):</p>
+<p><a class="btn" href="/mise.mobileconfig">Install iPhone profile</a></p>
 <ol>
-<li><b>iPhone:</b> tap <i>Allow</i> on the download prompt. Open <b>Settings</b>, tap <i>Profile Downloaded</i> near the top, then tap <b>Install</b>.</li>
+<li>Tap <i>Allow</i>, then <i>Close</i>.</li>
+<li>Open <b>Settings → General → VPN &amp; Device Management</b>, tap <i>Mise local CA</i> under Downloaded Profile, then <b>Install</b>.
+  (It may also show as <i>Profile Downloaded</i> at the top of Settings. Install it within 8 minutes or iOS discards it.)</li>
 <li>Go to <b>Settings → General → About → Certificate Trust Settings</b> and switch on <i>Mise local CA</i>.</li>
-<li><b>Android:</b> go to Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate.</li>
 </ol>
+<p><b>Android or a computer:</b> <a href="/mise-local-ca.crt">download the certificate</a>, then on Android go to
+Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate.</p>
 <h2>2 · Open the app</h2>
 <p class="muted">Use the address on the same network as your phone. Your phone's hotspot is usually <code>172.20.10.x</code>.</p>
 {cards}
@@ -144,10 +182,13 @@ def prepare(app_port: int, setup_port: int) -> tuple[str, str]:
     app_urls = [f"https://{i}:{app_port}" for i in ips] or [f"https://localhost:{app_port}"]
     page = _setup_page(app_urls, setup_port).encode()
     ca = CA_CERT.read_bytes()
+    profile = _mobileconfig()
 
     class Setup(BaseHTTPRequestHandler):
         def do_GET(self):
-            if self.path.startswith("/mise-local-ca.crt"):
+            if self.path.startswith("/mise.mobileconfig"):
+                body, ctype = profile, "application/x-apple-aspen-config"
+            elif self.path.startswith("/mise-local-ca.crt"):
                 body, ctype = ca, "application/x-x509-ca-cert"
             else:
                 body, ctype = page, "text/html; charset=utf-8"
