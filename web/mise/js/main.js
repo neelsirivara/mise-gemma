@@ -29,7 +29,7 @@ export const app = {
     this.view = VIEWS[name];
     document.body.classList.toggle("cooking", name === "cook");
     document.body.classList.toggle("capturing", name === "capture");
-    $$(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "capture" && name === "pantry") ? "page" : "false"));
+    $$(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "pantry" && name === "capture") ? "page" : "false"));
     root.innerHTML = "";
     this.view.enter(root, params, this);
     root.focus({ preventScroll: true });
@@ -131,7 +131,7 @@ $("#hubDialog").addEventListener("close", () => {
 
 // ---------------------------------------------------------------- boot
 $$(".nav button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
-$("#homeBtn").onclick = () => app.go("home");
+$("#homeBtn").onclick = () => app.go("pantry");
 addEventListener("online", updateNet);
 addEventListener("offline", updateNet);
 updateNet();
@@ -157,7 +157,7 @@ async function boot() {
   if (cs.active) app.go("cook");
   else if (cs.awaiting_feedback) app.go("feedback", { id: cs.awaiting_feedback });
   else if (last && VIEWS[last.name] && last.name !== "cook") app.go(last.name, last.params);
-  else app.go("capture"); // first screen: the camera
+  else app.go("pantry"); // first screen: the four steps, camera live in step 1
 }
 boot();
 window.mise = app; // handy in devtools and for the UI tests

@@ -1,5 +1,5 @@
-// First screen: a full-screen camera. Snap the fridge or cupboard (or pick from the gallery),
-// then Done hands the photos to the pantry view, which starts reading them straight away.
+// Full-screen camera, opened from step 1 of the landing page. Snap the fridge or cupboard
+// (or pick from the gallery); Done goes back to the steps, which start reading the photos straight away.
 import { shrink, snapshot, startCamera, stopCamera } from "/lib/camera.js";
 import { $, html, mount, raw, toast } from "../ui.js";
 import { photos } from "./pantry.js";
@@ -31,7 +31,7 @@ export async function enter(root, _params, app) {
       <div class="cap-flash" id="capFlash" aria-hidden="true"></div>
 
       <div class="cap-top">
-        <button class="cap-round" id="capClose" aria-label="Close the camera and open the recipe book">${raw(ICON.close)}</button>
+        <button class="cap-round" id="capClose" aria-label="Close the camera">${raw(ICON.close)}</button>
         <p class="cap-hint" id="capHint" role="status" aria-live="polite"></p>
         <div class="cap-top-r">
           <button class="cap-round" id="capTorch" aria-label="Flashlight" aria-pressed="false" hidden>${raw(ICON.torch)}</button>
@@ -120,7 +120,7 @@ export async function enter(root, _params, app) {
   };
   $("#capGallery").onclick = () => picker(false);
   $("#capDone").onclick = () => app.go("pantry", { scan: true });
-  $("#capClose").onclick = () => app.go("home");
+  $("#capClose").onclick = () => app.go("pantry");
 
   const tips = (open) => { $("#capTips").hidden = !open; $("#capHelp").setAttribute("aria-expanded", open); };
   $("#capHelp").onclick = () => tips($("#capTips").hidden);
