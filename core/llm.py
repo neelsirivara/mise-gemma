@@ -167,7 +167,8 @@ class LiteRTLLM:
 
     def _backend(self, name: str):
         B = self.lm.Backend
-        return {"cpu": B.CPU(), "gpu": B.GPU(), "npu": B.NPU()}[name.lower()]
+        # Build only the requested backend: B.NPU() raises on macOS/Linux.
+        return {"cpu": B.CPU, "gpu": B.GPU, "npu": B.NPU}[name.lower()]()
 
     def _contents(self, text, image, audio):
         C = self.lm.Content
