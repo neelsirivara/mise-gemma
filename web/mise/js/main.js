@@ -139,7 +139,11 @@ if ("serviceWorker" in navigator && isSecureContext) navigator.serviceWorker.reg
 
 async function boot() {
   try {
-    await getJSON("/api/meta");
+    const meta = await getJSON("/api/meta");
+    // neural voice (Kokoro) synthesized on the laptop; falls back to the browser's voice per sentence
+    if (meta.tts) app.speaker.useHub((text) => fetch(url("/api/tts"), {
+      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text }),
+    }).then((r) => (r.ok ? r.arrayBuffer() : null)));
   } catch {
     if (await recoverHub()) { location.replace(location.pathname); return; } // stale remembered hub
     setHub(false);

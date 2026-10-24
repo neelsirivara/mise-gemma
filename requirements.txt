@@ -10,3 +10,5 @@ numpy
 cryptography              # local HTTPS for phone mode
 qrcode                    # setup-page QR codes
 playwright                # scripts/ui_test.py (drives installed Chrome/Edge)
+kokoro-onnx>=0.6           # on-device neural voice (Kokoro-82M, Apache-2.0)
+soundfile

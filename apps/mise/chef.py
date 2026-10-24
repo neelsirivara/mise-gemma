@@ -132,3 +132,19 @@ def revise(recipe: dict, rating: int | None, tags: list[str], notes: str, step_s
             yield {"type": "progress", "chars": n}
         else:
             yield {"type": "revision", **ev["result"]}
+
+
+TIPS = {"type": "object", "properties": {"tips": {"type": "array", "maxItems": 6, "items": {
+    "type": "object", "properties": {"step": {"type": "integer"}, "tip": {"type": "string", "minLength": 8}},
+    "required": ["step", "tip"]}}}, "required": ["tips"]}
+
+
+def step_tips(recipe: dict) -> dict:
+    """{step index (str): short spoken tip} for the steps where a pro tip really helps."""
+    steps = "\n".join(f"{i + 1}. {s['text']}" for i, s in enumerate(recipe["steps"]))
+    out = _engine().complete_json(
+        f"Recipe: {recipe['title']}\n{steps}\n\nGive short chef's tips for at most 4 of these steps: only where a home "
+        "cook commonly goes wrong, or where a sensory doneness cue (look, smell, sound) helps. Each tip at most 15 words, "
+        "spoken aloud, no markdown. 'step' is the step number.", TIPS, system=CHEF, max_tokens=300)
+    n = len(recipe["steps"])
+    return {str(x["step"] - 1): x["tip"].strip() for x in out["tips"] if 1 <= x["step"] <= n}

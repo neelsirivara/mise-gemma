@@ -13,7 +13,9 @@ export class Mic {
     this.silentMs = 0;
     this.mode = null; // null | "ptt" | "vad"
     this.handsFree = false;
-    this.blocked = () => false; // e.g. while the app is speaking or thinking
+    this.blocked = () => false; // e.g. while the app is thinking
+    this.isSpeaking = () => false; // while true, hands-free needs a louder voice (barge-in)
+    this.onBargeIn = () => {}; // called when the cook talks over the app
     this.onUtterance = () => {};
     this.onLevel = () => {};
     this.onState = () => {};
@@ -72,8 +74,14 @@ export class Mic {
     this.preroll.push(buf);
     if (this.preroll.length > 8) this.preroll.shift();
     if (this.handsFree && !this.blocked()) {
-      this.voiced = rms > Math.max(0.02, this.noise * 4) ? this.voiced + 1 : 0;
-      if (this.voiced >= 3) this.start("vad");
+      // while Mise is talking, only a clearly louder voice counts: that's the cook interrupting
+      const talking = this.isSpeaking();
+      const thr = talking ? Math.max(0.06, this.noise * 8) : Math.max(0.02, this.noise * 4);
+      this.voiced = rms > thr ? this.voiced + 1 : 0;
+      if (this.voiced >= (talking ? 4 : 3)) {
+        if (talking) this.onBargeIn();
+        this.start("vad");
+      }
     }
   }
 
@@ -103,10 +111,16 @@ export class Mic {
 }
 
 export class Speaker {
+  // Queue of sentences. With a hub voice (Kokoro on the laptop) each sentence is fetched as WAV
+  // and prefetched while the previous one plays; otherwise the browser's local voice is used.
   constructor() {
     this.enabled = true;
     this.voice = null;
     this.speaking = false;
+    this.hub = null; // async (text) => ArrayBuffer | null
+    this.queue = [];
+    this.playing = null;
+    this.gen = 0; // bumps on stop(), so stale fetches never play
     this.onSpeak = () => {};
     const pick = () => {
       const vs = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
@@ -116,8 +130,20 @@ export class Speaker {
     };
     speechSynthesis.onvoiceschanged = pick;
     pick();
-    // iOS only lets speechSynthesis talk after it has spoken once inside a tap
-    addEventListener("pointerdown", () => speechSynthesis.speak(new SpeechSynthesisUtterance("")), { once: true });
+    // iOS: audio may only start after a tap; unlock both speech paths on the first one
+    addEventListener("pointerdown", () => this.unlock(), { once: true });
+  }
+
+  useHub(fetchWav) { this.hub = fetchWav; }
+
+  unlock() {
+    try {
+      speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      this.ctx = this.ctx || new AudioContext();
+      this.ctx.resume();
+      const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource();
+      s.buffer = b; s.connect(this.ctx.destination); s.start();
+    } catch {}
   }
 
   say(text, { interrupt = false } = {}) {
@@ -125,16 +151,47 @@ export class Speaker {
     if (!text) return;
     this.onSpeak(text);
     if (!this.enabled) return;
-    if (interrupt) speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(text);
+    if (interrupt) this.stop();
+    const item = { text, gen: this.gen };
+    if (this.hub) item.audio = this.hub(text).catch(() => null); // start synthesis now (prefetch)
+    this.queue.push(item);
+    this.speaking = true;
+    if (!this.playing) this.#next();
+  }
+
+  async #next() {
+    const item = this.queue.shift();
+    if (!item) { this.playing = null; this.speaking = false; return; }
+    this.playing = item;
+    const buf = item.audio ? await item.audio : null;
+    if (item.gen !== this.gen) return; // stopped while fetching
+    if (buf) {
+      try {
+        this.ctx = this.ctx || new AudioContext();
+        const audio = await this.ctx.decodeAudioData(buf.slice(0));
+        if (item.gen !== this.gen) return;
+        const src = this.ctx.createBufferSource();
+        src.buffer = audio;
+        src.connect(this.ctx.destination);
+        this.source = src;
+        src.onended = () => { if (item.gen === this.gen) this.#next(); };
+        src.start();
+        return;
+      } catch {}
+    }
+    // browser voice fallback
+    const u = new SpeechSynthesisUtterance(item.text);
     if (this.voice) u.voice = this.voice;
     u.rate = 1.03;
-    u.onstart = () => (this.speaking = true);
-    u.onend = u.onerror = () => (this.speaking = speechSynthesis.speaking || speechSynthesis.pending);
+    u.onend = u.onerror = () => { if (item.gen === this.gen) this.#next(); };
     speechSynthesis.speak(u);
   }
 
   stop() {
+    this.gen++;
+    this.queue = [];
+    this.playing = null;
+    try { this.source?.stop(); } catch {}
     speechSynthesis.cancel();
     this.speaking = false;
   }

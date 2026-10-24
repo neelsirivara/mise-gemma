@@ -8,6 +8,7 @@ carries the intent out deterministically. One model pass, native audio, no malfo
 """
 from __future__ import annotations
 
+import re
 import time
 from typing import Iterator
 
@@ -35,12 +36,17 @@ GUIDE = """Classify what the cook just said (audio or text) and answer if needed
 - finish: they're done cooking or eating ("we're finished", "plating up", "that's it").
 - set_timer: they ask for a timer; timer_seconds = the duration in SECONDS (30 seconds = 30, 2 minutes = 120), plus a short timer_label.
 - question: a cooking question (substitutions, doneness, heat, technique, "does this look right?"). Put a concrete
-  one- or two-sentence spoken answer in "answer", grounded in the recipe and the photo if one is attached.
+  one- or two-sentence spoken answer in "answer", grounded in the recipe and the photo if one is attached. Be a
+  proactive coach: give the exact amount, heat or cue, and if it helps, add what to do next.
 - feedback: they describe how the dish turned out (only after cooking). Set rating 1-5 from their words.
 - log: they report adding something ("I added the salt") so it can be remembered.
 - ignore: background talk not meant for you.
 "heard" = what they said, short. "answer" is spoken aloud: plain words, no markdown. For next/back/repeat/finish
 leave answer empty; the app narrates the step itself. Unused fields: 0 or empty string."""
+
+
+_memory: list[tuple[str, str]] = []  # (what the cook said, what Mise answered), for follow-ups
+_memory_for = {"id": None}
 
 
 def active() -> bool:
@@ -51,11 +57,26 @@ def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterat
     """Yields the same event shapes as core.llm streams: {"type": "tool"|"text"|"heard", ...}."""
     state = COOK.summary()
     timers = "; ".join(f"{t.label}: {round(t.remaining())}s left" for t in SESSION.timers if not t.fired) or "none"
-    prompt = f"{GUIDE}\n\nCURRENT STATE:\n{state}\nRUNNING TIMERS: {timers}\n\n" + (
-        f"The cook said: {text}" if text else "The cook's words are in the attached audio.")
+    rid = (COOK.recipe or {}).get("id")
+    if _memory_for["id"] != rid:  # new dish, fresh conversation
+        _memory.clear()
+        _memory_for["id"] = rid
+    convo = "\n".join(f"Cook: {h}\nMise: {a or '(acted)'}" for h, a in _memory[-4:])
+    last = _memory[-1] if _memory else None
+    prompt = (f"{GUIDE}\n\nCURRENT STATE:\n{state}\nRUNNING TIMERS: {timers}\n"
+              + (f"\nRECENT CONVERSATION:\n{convo}\n" if convo else "")
+              + (f"\nThe previous question was \"{last[0]}\". If the cook now says 'it', 'that', 'how much' or "
+                 "'what heat' without naming the thing, they mean what that previous question was about; answer for "
+                 "that thing, not for the recipe in general.\n" if last else "")
+              + "\n" + (f"The cook said: {text}" if text else "The cook's words are in the attached audio."))
     t0 = time.time()
     out = llm.talk().complete_json(prompt, SCHEMA, images=[image] if image else [], audio=audio, max_tokens=220)
     intent, answer = out["intent"], out["answer"].strip()
+    if intent == "question" and last and _is_follow_up(out["heard"]):
+        answer = _follow_up(last, out["heard"]) or answer
+    if intent != "ignore":
+        _memory.append((out["heard"], answer))
+        del _memory[:-8]
     yield {"type": "heard", "text": out["heard"], "intent": intent, "seconds": round(time.time() - t0, 2)}
     yield {"type": "tool", "name": intent, "args": {k: out[k] for k in ("timer_seconds", "timer_label", "rating") if out[k]},
            "result": {"ok": True}}
@@ -92,6 +113,28 @@ def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterat
         yield {"type": "text", "text": answer or "I'm not sure. Could you ask that another way?"}
     elif intent == "ignore":
         yield {"type": "text", "text": "NOOP"}
+
+
+_FOLLOW = re.compile(r"\b(it|that|this|them|those|one|how much|how many|what heat|how long|instead)\b", re.I)
+
+
+def _is_follow_up(heard: str) -> bool:
+    """Short questions that lean on the previous one ("how much of it?", "and what heat?")."""
+    return len(heard.split()) <= 7 and bool(_FOLLOW.search(heard))
+
+
+def _follow_up(last: tuple[str, str], heard: str) -> str:
+    """A small model resolves 'it' poorly inside the big classification prompt, so answer follow-ups in a
+    focused second pass that only sees the previous exchange (the current step pulls it off topic)."""
+    dish = (COOK.recipe or {}).get("title", "this dish")
+    prompt = (f"We're cooking {dish}. Earlier the cook asked: \"{last[0]}\"\nYou answered: \"{last[1]}\"\n"
+              f"Now they ask: \"{heard}\"\n'It' means the thing from the earlier question, so answer about that thing. "
+              "Answer in one or two short spoken sentences with a concrete amount, heat or cue. No markdown.")
+    try:
+        return "".join(e.get("text", "") for e in llm.talk().stream(
+            "You are Mise, a concise kitchen coach.", [], prompt, None, None, []) if e["type"] == "text").strip()
+    except Exception:
+        return ""
 
 
 def _dur(sec: float) -> str:

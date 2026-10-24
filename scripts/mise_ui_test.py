@@ -122,15 +122,20 @@ with sync_playwright() as pw:
     check("step 1 shown + narration caption", "step 1 of" in page.inner_text(".stage").lower(), page.inner_text("#said")[:120])
     check("ETA shown", "Eat around" in page.inner_text("#eta"), page.inner_text("#eta"))
     page.screenshot(path=str(OUT / "mise_cook.png"))
-    # spoken "Okay, I am done with that step. What is next?" through the fake mic
-    mic = page.locator("#mic")
-    mic.dispatch_event("pointerdown")
-    page.wait_for_timeout(5200)
-    mic.dispatch_event("pointerup")
+    check("always listening is on by default", page.is_checked("#handsFree"))
+    # the fake mic starts when cook mode opens it and says "Okay, I am done with that step. What is next?":
+    # hands-free must catch it with nobody touching the screen
+    try:
+        page.wait_for_function("document.querySelector('.stage .label').textContent.includes('Step 2')", timeout=45000)
+    except Exception:
+        pass
     page.wait_for_function("!window.mise.busy", timeout=60000)
-    page.wait_for_timeout(1200)
-    check("spoken 'what's next' moved to step 2", "step 2 of" in page.inner_text(".stage").lower(),
+    check("hands-free: spoken 'what's next' moved to step 2", "step 2 of" in page.inner_text(".stage").lower(),
           page.locator("#convo").inner_text())
+    page.uncheck("#handsFree")
+    tts = page.evaluate("""fetch('/api/tts', {method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text: 'Step two. Whisk the eggs.'})}).then(async r => [r.status, r.headers.get('content-type'), (await r.arrayBuffer()).byteLength])""")
+    check("neural voice (Kokoro) returns speech audio", tts[0] == 200 and "wav" in (tts[1] or "") and tts[2] > 20000, tts)
     page.click("#repeatBtn")
     page.click("#backBtn")
     page.wait_for_timeout(500)

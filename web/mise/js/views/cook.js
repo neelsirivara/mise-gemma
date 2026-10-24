@@ -1,6 +1,6 @@
 // Cook mode: one step at a time in huge type, narrated by the hub; timers, time cues and a
 // voice companion (hold the mic or go hands-free) that can move steps and answer questions.
-import { getJSON, postJSON } from "/lib/api.js";
+import { getJSON, postForm, postJSON } from "/lib/api.js";
 import { snapshot, startCamera, stopCamera } from "/lib/camera.js";
 import { $, MIC_ICON, clock, html, mins, mount, raw, toast } from "../ui.js";
 
@@ -26,7 +26,7 @@ export async function enter(root, _params, app) {
           <div class="pip" id="pip" hidden><video id="cookCam" playsinline muted></video></div>
           <div class="stack" style="flex:1;min-width:220px;gap:8px">
             <div class="toggles">
-              <label><input type="checkbox" id="handsFree"> Hands-free</label>
+              <label><input type="checkbox" id="handsFree"> Always listening</label>
               <label><input type="checkbox" id="useCam"> Camera</label>
               <label><input type="checkbox" id="speak" checked> Read aloud</label>
             </div>
@@ -69,7 +69,9 @@ export async function enter(root, _params, app) {
 
   // ---- voice companion
   const mic = app.mic;
-  mic.blocked = () => app.busy || app.speaker.speaking;
+  mic.blocked = () => app.busy; // while Mise thinks; while it talks, a louder voice interrupts it
+  mic.isSpeaking = () => app.speaker.speaking;
+  mic.onBargeIn = () => app.speaker.stop();
   mic.onState = (mode) => {
     $("#mic")?.classList.toggle("rec", !!mode);
     if ($("#micHint")) $("#micHint").textContent = mode ? "Listening…" : app.busy ? "Thinking…" : mic.handsFree ? "Listening for you" : "Hold to talk";
@@ -86,13 +88,31 @@ export async function enter(root, _params, app) {
   micBtn.addEventListener("contextmenu", (e) => e.preventDefault());
   $("#handsFree").onchange = async (e) => {
     mic.handsFree = e.target.checked;
+    try { localStorage.setItem("mise:handsfree", mic.handsFree ? "1" : "0"); } catch {}
     if (mic.handsFree) await mic.init().catch((err) => toast("Microphone unavailable: " + err.message));
     mic.onState(mic.mode);
   };
+  // always listening by default: a voice companion you don't have to touch with messy hands
+  let pref = "1";
+  try { pref = localStorage.getItem("mise:handsfree") ?? "1"; } catch {}
+  $("#handsFree").checked = pref === "1";
+  if (pref === "1") $("#handsFree").onchange({ target: $("#handsFree") });
+  let watchT = null;
   $("#useCam").onchange = async (e) => {
     $("#pip").hidden = !e.target.checked;
-    if (e.target.checked) await startCamera($("#cookCam")).catch((err) => { toast("Camera unavailable: " + err.message); e.target.checked = false; $("#pip").hidden = true; });
-    else stopCamera($("#cookCam"));
+    clearInterval(watchT);
+    if (e.target.checked) {
+      await startCamera($("#cookCam")).catch((err) => { toast("Camera unavailable: " + err.message); e.target.checked = false; $("#pip").hidden = true; });
+      // the watcher (second model, on the laptop CPU) checks the counter: hazards, "looks done"
+      if (e.target.checked) watchT = setInterval(async () => {
+        if (app.busy || mic.mode) return;
+        const f = await snapshot($("#cookCam"), 640);
+        if (!f) return;
+        const fd = new FormData();
+        fd.append("image", f, "frame.jpg");
+        postForm("/api/watch", fd).catch(() => {});
+      }, 8000);
+    } else stopCamera($("#cookCam"));
   };
   $("#speak").onchange = (e) => { app.speaker.enabled = e.target.checked; if (!e.target.checked) app.speaker.stop(); };
   $("#speak").checked = app.speaker.enabled;
@@ -120,7 +140,7 @@ export async function enter(root, _params, app) {
       if (ev.kind === "tick") drawTimers(ev.timers);
       if (ev.kind === "busy") mic.onState(mic.mode);
     }),
-    () => { removeEventListener("keydown", keys); removeEventListener("keyup", keyup); },
+    () => { removeEventListener("keydown", keys); removeEventListener("keyup", keyup); clearInterval(watchT); mic.handsFree = false; },
   ];
 
   function log(text, cls = "") {

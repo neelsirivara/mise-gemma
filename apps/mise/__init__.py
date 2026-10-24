@@ -114,7 +114,8 @@ def on_watch(data: dict):
     # two consecutive "done" frames before nudging; the small watcher is optimistic
     _watch["done_streak"] = _watch["done_streak"] + 1 if data.get("done") else 0
     if _watch["done_streak"] == 2 and COOK.active:
-        SESSION.emit("suggest", text="Looks like this step is done. Say next when you're ready.")
+        # proactive, spoken: the camera thinks the step is finished
+        SESSION.emit("say", tone="cue", text="That looks done to me. Say next when you're ready.")
 
 
 def reset():

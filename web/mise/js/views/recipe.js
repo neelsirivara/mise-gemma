@@ -66,6 +66,9 @@ export async function enter(root, params, app) {
 
   $("#back").onclick = () => app.go("home");
   $("#cook").onclick = async () => {
+    // unlock mic + speaker inside the tap (iOS requires a gesture) so cook mode can listen and talk at once
+    app.speaker.unlock();
+    app.mic.init().catch(() => {});
     try { await postJSON("/api/mise/cook/start", { id: r.id }); app.go("cook"); } catch (e) { toast(e.message); }
   };
   let armed = false;

@@ -22,6 +22,7 @@ from fastapi.staticfiles import StaticFiles
 from . import app as app_mod, config, llm
 from .memory import MEMORY, recall
 from .state import SESSION, note_seen
+from .tts import TTS_ENGINE
 
 APP = app_mod.load(sys.argv[1] if len(sys.argv) > 1 and not sys.argv[1].startswith("-") else config.APP)
 if recall not in APP.tools:
@@ -54,6 +55,7 @@ def warm():
             if img:
                 MEMORY.add("warm-up", [], img.read_bytes())
                 MEMORY.clear()
+            TTS_ENGINE.warm()  # first synthesis builds the ONNX graph (~seconds); do it before anyone listens
             STATS["warm_s"] = round(time.time() - t, 1)
             local = f"{'https' if config.PHONE else 'http'}://127.0.0.1:{config.PORT}"
             print(f"  ready in {STATS['warm_s']}s -> {local}", flush=True)
@@ -91,7 +93,21 @@ def prompt_state() -> str:
 def meta():
     return {"id": APP.id, "name": APP.name, "tagline": APP.tagline, "accent": APP.accent,
             "quick_prompts": APP.quick_prompts, "watch_interval_s": APP.watch_interval_s,
-            "speak_watch": APP.speak_watch, "attach_frame": APP.attach_frame}
+            "speak_watch": APP.speak_watch, "attach_frame": APP.attach_frame,
+            "tts": TTS_ENGINE.available}
+
+
+@api.post("/api/tts")
+def tts(body: dict):
+    """Neural speech for one sentence (WAV). The UI falls back to browser voices if this fails."""
+    text = str(body.get("text", ""))[:600]
+    if not text.strip():
+        return JSONResponse({"error": "no text"}, 400)
+    try:
+        audio = TTS_ENGINE.wav(text, body.get("voice"))
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, 503)
+    return Response(audio, media_type="audio/wav", headers={"Cache-Control": "no-store"})
 
 
 @api.get("/api/state")

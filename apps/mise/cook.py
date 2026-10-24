@@ -68,6 +68,9 @@ class Cook:
                 parts.append(f"While that's going, you can get ahead on the next step: {nxt['text']}")
         elif s["minutes"] >= 1:
             parts.append(f"This takes about {_mins(s['minutes'])}.")
+        tip = (r.get("tips") or {}).get(str(i))
+        if tip:
+            parts.append(f"Tip: {tip}")
         return " ".join(parts)
 
     def eta(self) -> float:
@@ -91,11 +94,32 @@ class Cook:
                 intro.append(r["note_for_next_time"])
             done_at = time.time() + r["total_minutes"] * 60
             intro.append(f"It takes about {_mins(r['total_minutes'])}, so you'll be eating around {_clock(done_at)}.")
+            waits = [(s["minutes"], k) for k, s in enumerate(r["steps"]) if s["timer"]]
+            if waits:
+                m, k = max(waits)
+                intro.append(f"The longest wait is step {k + 1}, about {_mins(m)}; I'll tell you what to prep while it cooks.")
             intro.append(f"You need {len(r['ingredients'])} ingredients; they're on screen. "
                          "Say next when you're ready to move on, or ask me anything.")
             self.say(" ".join(intro), "intro")
             self._enter(0)
+            if not r.get("tips"):
+                threading.Thread(target=self._make_tips, args=(r["id"], r["version"]), daemon=True).start()
             return self.state()
+
+    def _make_tips(self, rid: str, version: int):
+        """Chef's tips per step (common mistakes, doneness cues), written once per recipe version and saved."""
+        from . import chef
+        try:
+            tips = chef.step_tips(self.recipe)
+            r = book.get(rid)
+            if r["version"] == version:
+                r["tips"] = tips
+                book._write(r)
+            with self.lock:
+                if self.recipe and self.recipe["id"] == rid:
+                    self.recipe["tips"] = tips
+        except Exception:
+            pass  # tips are a bonus; cooking works without them
 
     def _enter(self, i: int):
         self.step, self.step_started_at = i, time.time()
@@ -172,6 +196,9 @@ class Cook:
                     self.cues_done.add(("done", i))
                     if i == self.step:
                         self.say("Time's up on this step. Check it, then say next.", "cue")
+                    else:
+                        what = self.recipe["steps"][i]["text"].rstrip(".")
+                        self.say(f"Heads up: the timer from step {i + 1} is done. {what}. Check it when you can.", "cue")
             planned = max(s["minutes"], 1) * 60
             if not s["timer"] and now - self.step_started_at > max(2 * planned, planned + 120) \
                     and ("slow", self.step) not in self.cues_done:

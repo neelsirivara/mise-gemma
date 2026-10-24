@@ -88,6 +88,24 @@ Benchmark (for the slide): `python scripts/bench.py`
 **http://127.0.0.1:8000** in **Chrome, Edge or Safari**. The camera and mic need a real browser, not an
 embedded preview.
 
+## Voice companion
+- **Always listening** in cook mode (toggle in the cook screen). Talk over Mise to interrupt it; it stops and listens.
+- **Neural voice on the laptop:** Kokoro-82M (Apache-2.0, int8 ONNX, ~120 MB) synthesizes each sentence on the CPU
+  and streams it to the phone or browser (`POST /api/tts`). If it's unavailable, the browser's local voice is used.
+  Pick a voice with `MISE_VOICE=af_bella` (default), `am_michael`, `af_nicole` or `bf_emma`.
+- **Proactive:** a briefing at the start (the longest wait and what to prep during it), chef's tips per step (written
+  once per recipe version by Gemma), "while that cooks…" cues, one-minute warnings, a heads-up when an earlier step's
+  timer ends, and, with the camera on, "that looks done" check-ins from the watcher model.
+- **Smart answers:** questions are answered from the recipe, the current step and the camera frame; short follow-ups
+  ("how much of it?") get a focused second pass over the previous exchange.
+
+## Hosting the UI on Vercel
+`web/` is a static site (no build step; `web/vercel.json` routes `/` to the Mise app). In Vercel: import the GitHub
+repo, set **Root Directory = `web`** and **Framework = Other**. Every push to `main` deploys. The models still run on
+the laptop: open the Vercel URL on the phone, tap the hub pill and enter `https://<laptop-ip>:8443` (phone mode must be
+running, and the phone must trust the local CA; see PHONE.md). Vercel only serves the page; camera frames, audio and
+all model calls go phone ↔ laptop.
+
 ## On a phone / as a home-screen app
 `.\run.cmd mise -Dual -Phone` serves HTTPS to your local network, with a QR setup page. The phone is the camera,
 mic and screen; the models stay on the laptop. You can also deploy `web/` to Vercel. See **PHONE.md**.
