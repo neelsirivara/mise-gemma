@@ -1,15 +1,42 @@
 // Talking to the Mise hub (the laptop running the models).
 // Same origin when the laptop serves the page; when the page is hosted elsewhere (Vercel),
 // ?hub=https://<laptop-ip>:8443 points it at the laptop and is remembered.
+// "192.168.1.5:8443" → "https://192.168.1.5:8443"; a hub equal to this page's own origin is just "".
+export function normalizeHub(v) {
+  v = (v || "").trim().replace(/\/+$/, "");
+  if (!v) return "";
+  if (!/^https?:\/\//i.test(v)) v = "https://" + v;
+  try {
+    const u = new URL(v);
+    return u.origin === location.origin ? "" : u.origin;
+  } catch {
+    return "";
+  }
+}
+
 export const HUB = (() => {
   const q = new URLSearchParams(location.search).get("hub");
   try {
-    if (q !== null) q ? localStorage.setItem("hub", q) : localStorage.removeItem("hub");
-    return (q ?? localStorage.getItem("hub") ?? "").replace(/\/$/, "");
+    if (q !== null) normalizeHub(q) ? localStorage.setItem("hub", normalizeHub(q)) : localStorage.removeItem("hub");
+    return normalizeHub(q ?? localStorage.getItem("hub") ?? "");
   } catch {
-    return (q || "").replace(/\/$/, "");
+    return normalizeHub(q || "");
   }
 })();
+
+// A remembered hub that no longer answers (new network, Tailscale off) shouldn't strand the app
+// when the page itself was served by a working hub: forget it and use this origin.
+export async function recoverHub() {
+  if (!HUB) return false;
+  try {
+    const r = await fetch("/api/meta", { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (!r.ok) return false;
+    try { localStorage.removeItem("hub"); } catch {}
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export const url = (path) => HUB + path;
 
@@ -31,7 +58,8 @@ async function call(path, opts) {
   }
 }
 
-export const getJSON = async (path) => (await call(path)).json();
+// reads time out fast: an unreachable hub (wrong network, Tailscale off) otherwise hangs for ~a minute
+export const getJSON = async (path, ms = 6000) => (await call(path, { signal: AbortSignal.timeout(ms) })).json();
 
 export const postJSON = async (path, body = {}) =>
   (await call(path, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })).json();

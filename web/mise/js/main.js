@@ -1,6 +1,6 @@
 // Mise app shell: routing between views, the hub event loop (spoken cues, timers),
 // and the voice companion (hold-to-talk / hands-free → Gemma → spoken reply).
-import { HUB, getJSON, stream, url } from "/lib/api.js";
+import { HUB, getJSON, normalizeHub, recoverHub, stream, url } from "/lib/api.js";
 import { Mic, Speaker, SentenceSpeaker, beep } from "/lib/voice.js";
 import { $, $$, toast } from "./ui.js";
 import * as home from "./views/home.js";
@@ -123,7 +123,7 @@ $("#hubPill").onclick = openHub;
 $("#hubDialog").addEventListener("close", () => {
   if ($("#hubDialog").returnValue !== "save") return;
   const u = new URL(location.href);
-  u.searchParams.set("hub", $("#hubInput").value.trim());
+  u.searchParams.set("hub", normalizeHub($("#hubInput").value));
   location.href = u.toString();
 });
 
@@ -139,6 +139,7 @@ async function boot() {
   try {
     await getJSON("/api/meta");
   } catch {
+    if (await recoverHub()) { location.replace(location.pathname); return; } // stale remembered hub
     setHub(false);
     if (!app.askedHub) { app.askedHub = true; if (HUB || location.port === "") openHub(); }
     root.innerHTML = `<div class="empty"><h2>Waiting for the Mise hub</h2><p>Start <b>run.cmd mise</b> on the laptop, or set the hub address with the button at the top.</p></div>`;
