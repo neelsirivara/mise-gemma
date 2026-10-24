@@ -281,6 +281,10 @@ api.mount("/", StaticFiles(directory=config.WEB_DIR, html=True), name="web")
 
 
 if __name__ == "__main__":
+    if sys.platform == "win32":
+        # the default Proactor loop prints a ConnectionResetError traceback every time a phone drops a connection
+        import asyncio
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     print(f"\n  {APP.name}: loading models (~30s). The page opens when ready. Keep this window open.\n", flush=True)
     if config.PHONE:
         # phone mode: HTTPS on all interfaces (iPhone camera/mic need HTTPS) + a plain-HTTP setup page
