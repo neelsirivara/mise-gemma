@@ -52,6 +52,10 @@ def normalize(r: dict) -> dict:
             "check": str(s.get("check", "") or ""),
         })
     total = r.get("total_minutes") or round(sum(s["minutes"] for s in steps))
+    if total:  # a single step can't outlast the whole recipe (usually "30 seconds" written as 30 minutes)
+        for s in steps:
+            if s["minutes"] > total:
+                s["minutes"] = round(s["minutes"] / 60, 1) if s["minutes"] >= 20 else float(total)
     return {
         "title": str(r.get("title", "Untitled")).strip(),
         "summary": str(r.get("summary", "") or "").strip(),

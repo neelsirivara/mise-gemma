@@ -14,15 +14,16 @@ STAPLES = "salt, pepper, cooking oil, water"
 
 INGREDIENT = {"type": "object", "properties": {"item": {"type": "string"}, "qty": {"type": "string"}},
               "required": ["item", "qty"]}
-STEP = {"type": "object", "properties": {"text": {"type": "string"}, "minutes": {"type": "number"},
+STEP = {"type": "object", "properties": {"text": {"type": "string", "minLength": 8}, "minutes": {"type": "number"},
                                          "timer": {"type": "boolean"}}, "required": ["text", "minutes", "timer"]}
 RECIPE = {"type": "object", "properties": {
     "title": {"type": "string"}, "summary": {"type": "string"}, "servings": {"type": "integer"},
     "total_minutes": {"type": "integer"}, "tags": {"type": "array", "maxItems": 4, "items": {"type": "string"}},
     "ingredients": {"type": "array", "minItems": 2, "maxItems": 16, "items": INGREDIENT},
-    "steps": {"type": "array", "minItems": 3, "maxItems": 10, "items": STEP}},
+    "steps": {"type": "array", "minItems": 3, "maxItems": 9, "items": STEP}},
     "required": ["title", "summary", "servings", "total_minutes", "tags", "ingredients", "steps"]}
-PANTRY = {"type": "object", "properties": {"items": {"type": "array", "maxItems": 30, "items": {"type": "string"}}},
+PANTRY = {"type": "object", "properties": {"items": {"type": "array", "minItems": 1, "maxItems": 30,
+                                                       "items": {"type": "string", "minLength": 2}}},
           "required": ["items"]}
 IDEAS = {"type": "object", "properties": {"ideas": {"type": "array", "minItems": 3, "maxItems": 3, "items": {
     "type": "object", "properties": {
@@ -50,7 +51,7 @@ def scan_pantry(images: list[bytes]) -> list[str]:
         "Use short everyday names a recipe would use (for example 'canned chickpeas', 'eggs', 'basmati rice', "
         "'smoked paprika'). Read labels where you can. Skip non-food items and anything you cannot see. "
         "Do not list the same ingredient twice.",
-        PANTRY, images=images, system=CHEF, max_tokens=300)
+        PANTRY, images=images, max_tokens=300)
     seen, items = set(), []
     for i in out["items"]:
         k = i.strip().lower()
@@ -79,16 +80,19 @@ def write_recipe(idea: dict, items: list[str], minutes: int, servings: int, note
     prompt = (f"Write the full recipe for \"{idea['title']}\": {idea.get('summary', '')}\n"
               f"Ingredients I have: {', '.join(items)}, plus {STAPLES}. Serves {servings}.\n"
               + (f"Preferences: {notes}\n" if notes else "")
-              + f"total_minutes must be at most {minutes}. Give each step realistic minutes. When a step is waiting "
-              "(boiling, simmering, baking, resting) set timer=true and use the wait for the next prep step, saying "
-              "'while that cooks, ...'. Active steps (chopping, stirring, plating) have timer=false. "
-              "4 to 9 steps. Specific quantities in ingredients. Steps are spoken aloud: one action each, "
-              "no numbering, no markdown.")
-    t0, buf = time.time(), []
-    for chunk in _engine().stream_json(prompt, RECIPE, system=CHEF, max_tokens=1400):
-        buf.append(chunk)
-        yield {"type": "progress", "chars": sum(map(len, buf))}
-    recipe = json.loads("".join(buf))
+              + f"total_minutes must be at most {minutes}. Give each step realistic minutes (decimals for seconds: "
+              "0.5 = 30 seconds). When a step is waiting "
+              "(boiling, simmering, baking, toasting, resting) set timer=true; the app then suggests the next prep "
+              "step during the wait. Active steps (chopping, mixing, stirring, plating) have timer=false. "
+              "4 to 8 steps. Specific quantities in ingredients. Steps are spoken aloud: one clear action each with "
+              "heat level or doneness cue, no numbering, no markdown, and don't start steps with 'while'.")
+    t0, n = time.time(), 0
+    for ev in _engine().stream_json(prompt, RECIPE, system=CHEF, max_tokens=1400):
+        if "chunk" in ev:
+            n += len(ev["chunk"])
+            yield {"type": "progress", "chars": n}
+        else:
+            recipe = ev["result"]
     recipe["servings"] = recipe.get("servings") or servings
     yield {"type": "recipe", "recipe": recipe, "seconds": round(time.time() - t0, 1)}
 
@@ -121,8 +125,10 @@ def revise(recipe: dict, rating: int | None, tags: list[str], notes: str, step_s
               "'heard' = one sentence restating my feedback (include what I said in the voice note, if any). "
               "'changes' = short notes like 'Salt 1 tsp → 1/2 tsp, because you found it too salty'. "
               "'note_for_next_time' = one friendly sentence to tell me when I start cooking it next time.")
-    buf = []
-    for chunk in _engine().stream_json(prompt, REVISION, audio=audio, system=CHEF, max_tokens=1600):
-        buf.append(chunk)
-        yield {"type": "progress", "chars": sum(map(len, buf))}
-    yield {"type": "revision", **json.loads("".join(buf))}
+    n = 0
+    for ev in _engine().stream_json(prompt, REVISION, audio=audio, system=CHEF, max_tokens=1600):
+        if "chunk" in ev:
+            n += len(ev["chunk"])
+            yield {"type": "progress", "chars": n}
+        else:
+            yield {"type": "revision", **ev["result"]}

@@ -1,7 +1,7 @@
 """Verify a model/backend combo end to end: load, text, image, audio, tool call.
 
-  .venv\\Scripts\\python scripts\\smoke_test.py models\\gemma-4-E4B-it.litertlm gpu
-  .venv\\Scripts\\python scripts\\smoke_test.py models\\gemma-4-E2B-it_intel_LNL.litertlm npu --no-audio
+  python scripts/smoke_test.py models/gemma-4-E4B-it.litertlm gpu
+  python scripts/smoke_test.py models/gemma-4-E2B-it_intel_LNL.litertlm npu --no-audio
 """
 import argparse
 import sys

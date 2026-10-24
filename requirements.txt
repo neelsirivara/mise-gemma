@@ -1,5 +1,5 @@
 litert-lm-api>=0.18.1
-openvino>=2026.4          # Intel NPU dispatch for LiteRT
+openvino>=2026.4 ; sys_platform == "win32"   # Intel NPU dispatch for LiteRT (Windows only)
 huggingface_hub
 fastapi
 uvicorn[standard]

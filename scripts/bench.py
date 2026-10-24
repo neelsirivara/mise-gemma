@@ -1,8 +1,8 @@
 """Measure prefill/decode speed per model x backend with LiteRT-LM's built-in benchmark.
 Numbers go on the "runs on this laptop" slide.
 
-  .venv\\Scripts\\python scripts\\bench.py            # all models present, gpu + cpu
-  .venv\\Scripts\\python scripts\\bench.py gpu         # one backend
+  python scripts/bench.py            # all models present, gpu + cpu
+  python scripts/bench.py gpu         # one backend
 """
 import json
 import sys

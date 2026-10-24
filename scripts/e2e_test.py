@@ -1,6 +1,6 @@
 """Drive a running server through a scripted demo (no browser needed).
 
-  .venv\\Scripts\\python scripts\\e2e_test.py [base_url] [app]
+  python scripts/e2e_test.py [base_url] [app]
 """
 import json
 import sys
@@ -74,6 +74,8 @@ wait_ready()
 urllib.request.urlopen(urllib.request.Request(BASE + "/api/reset", method="POST"))
 
 if APP == "mise":
+    sys.exit("Mise has its own product API now: run scripts/mise_api_test.py (and scripts/mise_ui_test.py for the UI).")
+if False:
     watch("Avocado_Hass_-_single_and_halved.jpg")
     chat("What can I make with what's on my counter?", image="Avocado_Hass_-_single_and_halved.jpg")
     chat("Actually, let's make the saved guacamole recipe.")

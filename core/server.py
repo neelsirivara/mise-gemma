@@ -1,7 +1,7 @@
 """Generic FastAPI server: serves the UI and brokers camera/mic -> Gemma -> tools
 for whichever app scaffold is selected.
 
-Run:  .venv\\Scripts\\python -m core.server [mise|bench|sight]
+Run:  run.cmd (Windows) / ./run.sh (macOS, Linux), or:  python -m core.server [mise|bench|sight]
 """
 from __future__ import annotations
 
@@ -125,9 +125,13 @@ async def chat(text: str = Form(""), image: UploadFile | None = File(None), audi
 
     def gen():
         t0 = time.time()
-        first, out, n, tools_called = None, [], 0, []
+        first, out, n, tools_called, heard, custom = None, [], 0, [], None, None
         try:
-            for ev in llm.talk().stream(system, history, text or None, img, aud, APP.tools):
+            custom = APP.chat(text or None, img, aud) if APP.chat else None
+            events = custom if custom is not None else llm.talk().stream(system, history, text or None, img, aud, APP.tools)
+            for ev in events:
+                if ev["type"] == "heard":
+                    heard = ev["text"]
                 if ev["type"] == "tool":
                     tools_called.append(ev)
                 if ev["type"] == "text":
@@ -138,14 +142,14 @@ async def chat(text: str = Form(""), image: UploadFile | None = File(None), audi
         except Exception as e:
             yield json.dumps({"type": "error", "error": f"{type(e).__name__}: {e}"}) + "\n"
         reply = "".join(out).strip()
-        if not reply and tools_called:
+        if not reply and tools_called and custom is None:
             # small models often call a tool and then stop; confirm aloud for them
             reply = confirm(tools_called)
             yield json.dumps({"type": "text", "text": reply}) + "\n"
         total = time.time() - t0
         noop = reply.upper().startswith("NOOP")
         if not noop:
-            HISTORY.append({"role": "user", "content": text or ("[spoke]" if aud else "[showed camera]")})
+            HISTORY.append({"role": "user", "content": text or heard or ("[spoke]" if aud else "[showed camera]")})
             HISTORY.append({"role": "assistant", "content": reply or "(done)"})
         STATS["turns"] += 1
         STATS["last"] = {"ttft_s": round(first or total, 2), "total_s": round(total, 2), "chunks": n,

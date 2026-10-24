@@ -10,10 +10,12 @@ laptop over your local network. Nothing goes to the cloud. iPhones only allow ca
    and join it from the laptop: venue Wi-Fi often blocks devices from reaching each other.
 2. On the laptop:
    ```
-   .\run.cmd mise -Dual -Phone
+   .\run.cmd mise -Dual -Phone        # Windows
+   ./run.sh mise --dual --phone       # macOS / Linux
    ```
-   The window prints a **QR code** plus the setup and app addresses. The first time, Windows Firewall asks about
-   Python: allow it for the network type you're on. (Joining your own hotspot often counts as "Public".)
+   The window prints a **QR code** plus the setup and app addresses. The first time, the firewall asks about
+   Python. On Windows, allow it for the network type you're on (your own hotspot often counts as "Public");
+   on macOS, click **Allow** for incoming connections.
 3. **On the iPhone, once:** scan the QR code to open the setup page (`http://<laptop-ip>:8080`), then:
    - Tap **Download certificate**, then **Allow**.
    - Open **Settings → Profile Downloaded → Install**.
@@ -22,7 +24,7 @@ laptop over your local network. Nothing goes to the cloud. iPhones only allow ca
    **Share → Add to Home Screen**.
 5. Open **Mise** from the home screen and allow the camera and microphone. The back camera is used by default.
 
-Switched networks? Restart `run.cmd -Phone`. It issues a new server certificate for the new IP. The phone
+Switched networks? Restart phone mode. It issues a new server certificate for the new IP. The phone
 keeps trusting the same local CA, so step 3 is a one-time thing.
 
 ## Option B — host the page on Vercel and point it at the laptop
@@ -46,7 +48,7 @@ phone ↔ laptop. For the judges' "no cloud anywhere in the loop" rule, Option A
 
 | Symptom | Fix |
 |---|---|
-| Badge says "no Mise hub at …" | The laptop isn't reachable. Check you're on the same network (hotspot), `run.cmd -Phone` is running, and the firewall allowed Python. |
+| Badge says "no Mise hub at …" | The laptop isn't reachable. Check you're on the same network (hotspot), phone mode is running, and the firewall allowed Python. |
 | Safari shows "not private" | The CA isn't trusted yet. Redo step 3, including the **Certificate Trust Settings** switch. |
 | No camera prompt | You opened the `http://…:8080` setup page. The app is on `https://…:8443`. |
 | No voice reply | Tap the screen once first (iOS unlocks audio on a tap), and check that the ringer switch isn't on silent. |

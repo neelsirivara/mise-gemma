@@ -134,7 +134,7 @@ Nothing goes to the internet.</p>
 <li>Open <b>Mise</b> from the home screen and allow the camera and microphone.</li></ol>
 <p class="muted">Seeing “can't connect”? Check that the phone and laptop are on the same network. Venue Wi-Fi often blocks
 devices from reaching each other, so turn on your iPhone's Personal Hotspot and join it from the laptop. Also check that
-Windows Firewall allowed Python on <i>Private</i> networks. Setup page: port {setup_port}.</p>
+the laptop firewall allows Python (Windows: Private networks; macOS: allow incoming connections). Setup page: port {setup_port}.</p>
 </main></body></html>"""
 
 
@@ -175,5 +175,5 @@ def prepare(app_port: int, setup_port: int) -> tuple[str, str]:
     print("  2) Then the app (after trusting the certificate):")
     for u in app_urls:
         print("       ", u)
-    print("  If Windows Firewall asks, allow Python on Private networks.\n", flush=True)
+    print("  If the firewall asks, allow Python to accept incoming connections.\n", flush=True)
     return str(SRV_CERT), str(SRV_KEY)

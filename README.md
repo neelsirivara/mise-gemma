@@ -1,73 +1,104 @@
-# Gemma Edge Kit — three on-device Gemma 4 scaffolds
+# Mise — the offline sous-chef that gets better every time you cook
 
-Built for the **Google Gemma Hardware Hackathon** (AGI House, Oct 24 2026). Every model runs on the
-laptop itself through **LiteRT-LM**. Nothing calls the cloud. The demo still works with Wi-Fi off.
+Built for the **Google Gemma Hardware Hackathon** (AGI House, Oct 24 2026). Every model runs on your own
+computer through **LiteRT-LM**: Gemma 4 E2B for voice, vision and writing, plus EmbeddingGemma 2 for visual memory.
+Nothing calls the cloud. It works with Wi-Fi off.
 
-| App | One-liner | Run |
-|---|---|---|
-| **Mise** (lead pitch) | Hands-free, offline sous-chef that watches the counter, listens, runs timers, remembers what you did | `.\run.cmd mise` |
-| **Bench** | Offline electronics lab partner: identifies parts, does circuit math with tools, walks you through builds | `.\run.cmd bench` |
-| **Sight** | Private, offline narrator for blind and low-vision users: describes scenes, reads labels, finds objects | `.\run.cmd sight` |
+**What Mise does**
+1. **Photograph your cupboard** (or fridge), say how long you have (15–90 min) and how many you're feeding.
+   Gemma reads the photos into an editable ingredient list and suggests three dishes that fit the time.
+2. **Pick one** and Mise writes the full recipe (quantities, timed steps, which steps are hands-off) into your **recipe book**.
+3. **Cook hands-free.** Cook mode reads each step aloud, starts timers for hands-off steps, tells you what to prep
+   while something simmers, warns a minute before a timer ends, and shows when you'll be eating. Say "next",
+   "say that again", "how long is left?", "can I use bacon instead?", or hold up the pan and ask "does this look right?".
+4. **Say how it went.** Rating, quick notes ("too salty"), typed or spoken. Mise also records how long each step
+   really took. It then writes **version 2** with the changes listed and why. The old version stays in the history,
+   and next time you cook it, Mise opens with what changed.
 
-All three share one engine, server and UI. An app is a single Python file (prompts, tools, state
-panels). See `apps/*/__init__.py`.
+| App | One-liner |
+|---|---|
+| **Mise** (the product) | Cupboard photo → recipe → narrated, timed cook mode → feedback → a better version, every time |
+| **Bench** (scaffold) | Offline electronics lab partner: identifies parts, does circuit math with tools, walks you through builds |
+| **Sight** (scaffold) | Private, offline narrator for blind and low-vision users: describes scenes, reads labels, finds objects |
 
 ## Architecture
 
 ```
- browser (Edge/Chrome, localhost)                      Python (FastAPI)                     LiteRT-LM
- ─────────────────────────────────                     ─────────────────                    ─────────────────────────────
- webcam frame (JPEG) ─┐                                                                     Gemma 4 E4B  · Arc GPU
- mic → VAD → 16k WAV ─┼─ POST /api/chat ─────────────▶ prompt = system + app state ───────▶  (native audio + vision +
- text / quick prompts ┘   (NDJSON stream back)          + tool functions (timers, steps…)    function calling)
-                                                        ◀── text chunks + tool events ────
- speechSynthesis (local voice) ◀─ sentences as they arrive
-
- every ~6s: frame ─────── POST /api/watch ───────────▶ watch prompt → JSON {see, objects,  ▶ Gemma 4 E2B · Intel NPU
-                                                        done, alert} → alerts, memory          (or shares E4B)
-                                                        every frame → visual memory ───────▶ EmbeddingGemma 2 (text+vision)
-                                                        recall(query) tool ◀─ cosine search   · GPU, ~60 ms/frame
+ web/mise/ (vanilla JS modules)        apps/mise/ (FastAPI router /api/mise)          core/ (shared engine)
+ ──────────────────────────────        ─────────────────────────────────────          ───────────────────────────────
+ views: home · pantry · recipe ·  ───▶  routes.py   HTTP API, NDJSON progress streams    llm.py   LiteRT-LM engines
+        cook · feedback                 book.py     recipe book: JSON per recipe,                 (GPU talk, CPU watch),
+ lib/:  api (hub-aware fetch)                       versions, feedback, cook timings              structured output
+        voice (VAD → 16 kHz WAV,        chef.py     scan / ideas / write / revise                 (fast path + grammar
+               local TTS)                           (schema-validated JSON)                        fallback)
+        camera (preview, snapshots)     cook.py     cook-session state machine:          memory.py EmbeddingGemma 2
+                                                    narration, timers, time cues                   visual memory
+ hold-to-talk / hands-free ───────────▶ companion.py voice intent router (one structured  phone.py  local HTTPS + QR
+                                                    call: next/back/repeat/time/finish/   server.py app hooks, events,
+                                                    timer/question/feedback/log)                   timers, static UI
 ```
 
-* **One model for hearing and seeing.** Gemma 4 E4B takes the WAV and the camera frame in the *same* turn,
-  so there's no separate speech-to-text step. Audio clips can be up to 30 s; the VAD caps them at 15 s.
-* **Tools are plain Python.** LiteRT-LM builds the function-calling schema from type hints and docstrings
-  (`core/state.py`, `apps/*/__init__.py`). The UI shows every tool call as a chip.
+* **One model hears and sees.** Gemma 4 takes the WAV and the camera frame in the *same* call, with no separate
+  speech-to-text step.
+* **Structured output, fast.** Recipes, ideas and revisions are JSON validated against a schema. The fast path
+  generates freely with multi-token prediction, then validates; only if that fails does it retry with
+  grammar-constrained decoding (llguidance), which is slower per token on Gemma's 262k vocabulary.
+  Multi-token prediction is switched off for constrained calls, because its draft tokens bypass the grammar.
+* **Voice intents, not free-form tools.** In cook mode every utterance goes through one structured call that picks an
+  intent from a fixed list and returns a transcript plus an answer. That's reliable on a 2B model, at 2–6 s per command.
 * **Visual memory** (`core/memory.py`). Each watch frame is embedded with multimodal EmbeddingGemma 2,
   so text questions retrieve frames ("did I already salt it?", "where are my keys?").
 * **Fallbacks.** Set `-Engine ollama` to use Ollama with `gemma4:e4b` (no audio input there; type
   instead). If the camera fails, use the 🖼️ button to load a still image.
 
-## Setup (already done on this laptop)
+## Setup
 
+### macOS (Apple Silicon: M1 or later, macOS 12+) or Linux
+```bash
+git clone https://github.com/neelsirivara/mise-gemma.git && cd mise-gemma
+./setup.sh                 # venv + dependencies + ~3 GB of models (Python 3.10–3.13; uses uv if installed)
+./run.sh mise --dual       # opens http://127.0.0.1:8000 when the models are warm
+```
+LiteRT-LM runs Gemma on the Mac GPU (Metal). It ships wheels for Apple Silicon only; on an Intel Mac, install
+Ollama, run `ollama pull gemma4:e4b`, and start with `./run.sh mise --engine ollama` (slower, and no voice input).
+The first time, macOS asks for camera and microphone access for your browser; allow it.
+
+### Windows
 ```powershell
-uv python install 3.12            # or any 3.10+
+uv python install 3.12            # or any 3.10–3.13
 py -3.12 -m venv .venv
 .venv\Scripts\pip install -r requirements.txt
-.venv\Scripts\python scripts\download_models.py      # ~7.5 GB into .\models
+.venv\Scripts\python scripts\download_models.py      # ~3 GB into .\models (--all adds E4B + the Intel NPU build)
 ```
 
-Smoke test a model/backend: `.venv\Scripts\python scripts\smoke_test.py models\gemma-4-E4B-it.litertlm gpu`
+Smoke test a model/backend: `python scripts/smoke_test.py models/gemma-4-E2B-it.litertlm gpu`
 
-Benchmark (for the slide): `.venv\Scripts\python scripts\bench.py`
+Benchmark (for the slide): `python scripts/bench.py`
 
 ## Run
 
-```powershell
-.\run.cmd mise                 # E4B on GPU does both talking and watching
-.\run.cmd mise -Dual           # + E2B on the Intel NPU as an always-on watcher (needs NPU driver >= 32.0.100.4724)
-.\run.cmd mise -Dual -WatchBackend cpu   # second model on CPU if the NPU path fails
-.\run.cmd bench -Engine ollama # fallback engine
-```
+| | Windows | macOS / Linux |
+|---|---|---|
+| Mise | `.\run.cmd mise -Dual` | `./run.sh mise --dual` |
+| Phone mode (HTTPS + QR setup) | `.\run.cmd mise -Dual -Phone` | `./run.sh mise --dual --phone` |
+| Other scaffolds | `.\run.cmd bench` / `sight` | `./run.sh bench` / `sight` |
+| Ollama fallback | `.\run.cmd mise -Engine ollama` | `./run.sh mise --engine ollama` |
 
-Open **http://127.0.0.1:8000** in **Edge or Chrome** (the camera and mic need a real browser, not an
-embedded preview). Hold **Space** to talk, or tick **Hands-free**. Tick **Watch** to start the vision loop.
+`-Dual` / `--dual` adds a second Gemma 4 E2B on the CPU as the always-on camera watcher. Open
+**http://127.0.0.1:8000** in **Chrome, Edge or Safari**. The camera and mic need a real browser, not an
+embedded preview.
 
 ## On a phone / as a home-screen app
 `.\run.cmd mise -Dual -Phone` serves HTTPS to your local network, with a QR setup page. The phone is the camera,
 mic and screen; the models stay on the laptop. You can also deploy `web/` to Vercel. See **PHONE.md**.
 
-## Autonomous UI tests
+## Autonomous tests
+- `python scripts/mise_api_test.py <url>`: Mise product API with the real model (pantry photo → ideas → recipe →
+  cook mode → voice intents → feedback → version 2).
+- `python scripts/mise_ui_test.py`: the same flow driven through the Mise UI in real Chrome with a fake camera and
+  mic, plus the phone layout. Screenshots go to `assets/ui_test/mise_*.png`.
+
+### Classic demo UI tests
 `.venv\Scripts\python scripts\ui_test.py --mobile` starts a server and drives real Chrome with a **fake webcam**
 (`assets/fake/counter.mjpeg`) and a **fake mic** (`assets/fake/*.wav`). It covers hold-to-talk, a 100 s hands-free
 session, the watch loop, memory, timers, the still-image fallback, the iPhone layout and server-down handling.

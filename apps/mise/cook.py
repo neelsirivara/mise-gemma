@@ -22,6 +22,12 @@ def _mins(m: float) -> str:
     return f"{m:g} minute{'s' if m != 1 else ''}"
 
 
+def _mins_adj(m: float) -> str:
+    """'an 8-minute timer', 'a 30-second timer'."""
+    s = f"{round(m * 60)}-second" if m < 1 else f"{round(m) if m >= 2 else round(m, 1):g}-minute"
+    return ("an " if s[0] == "8" or s.startswith(("11-", "18-")) else "a ") + s
+
+
 def _short(text: str, words: int = 4) -> str:
     w = text.rstrip(".").split()
     return " ".join(w[:words]) + ("…" if len(w) > words else "")
@@ -46,9 +52,9 @@ class Cook:
     lock: threading.RLock = field(default_factory=threading.RLock)
 
     # ------------------------------------------------------------- narration
-    def say(self, text: str, kind: str = "narration"):
+    def say(self, text: str, tone: str = "narration"):
         self.last_said = text
-        SESSION.emit("say", text=text, kind=kind)
+        SESSION.emit("say", text=text, tone=tone)
 
     def _step_line(self, i: int) -> str:
         r = self.recipe
@@ -56,7 +62,7 @@ class Cook:
         n = len(r["steps"])
         parts = [f"Step {i + 1} of {n}." if i < n - 1 else f"Last step, {i + 1} of {n}.", s["text"]]
         if s["timer"]:
-            parts.append(f"I've started a {_mins(s['minutes'])} timer.")
+            parts.append(f"I've started {_mins_adj(s['minutes'])} timer.")
             nxt = r["steps"][i + 1] if i + 1 < n else None
             if s["minutes"] >= 3 and nxt and not nxt["timer"]:
                 parts.append(f"While that's going, you can get ahead on the next step: {nxt['text']}")

@@ -57,18 +57,26 @@ stage.** Run `scripts\ui_test.py --quick --mobile` after any UI change.
 6. **Arduino probe thermometer** (if a loaner UNO Q is around): serial → a `read_temperature()` tool. Answers "is the chicken done?" with a number.
 
 ## The 3-minute demo script (rehearse word for word)
-1. **0:00 Hook.** "Cooking means your hands are full and your eyes are busy. Mise is a sous-chef that watches, listens and
-   keeps up, and it runs entirely on this laptop." Turn on **airplane mode**: the badge flips to "fully offline".
-2. **0:20** With the camera on the props: "Hey, what can I make with this?" A recipe appears. Then "Let's do the guacamole."
-3. **0:50** Hands-free: "Done, what's next?" Then "Set a timer for the onions, two minutes." Point at the **tool chips** and the timer.
-4. **1:30** Hold up both jars: "Which one is the cumin?" It answers left or right. Mention blind and low-vision cooks.
-5. **2:00** "I just added the salt." … later: "Wait, did I already salt it?" Memory answers with thumbnails.
-6. **2:30** Show the **How it works** and **numbers** slides: "Three LiteRT-LM models on two chips, ~2 s per turn, Gemma 4 hears and sees in one call."
-7. **2:50** "None of it leaves the kitchen."
+1. **0:00 Hook.** "Every recipe app gives you the same recipe forever. Mise looks in your cupboard, cooks with you
+   hands-free, and rewrites the recipe every time you tell it how it went. And it runs entirely on this laptop."
+   Turn on **airplane mode**; the badge flips to "fully offline".
+2. **0:20 Cupboard.** Tap **What can I make?** and photograph the props (or tap + Add photo). Pick **20 min**.
+   The ingredients appear as editable chips, then three ideas that fit 20 minutes. Tap **Write this recipe**.
+   (About 40 s total: talk over it. "Gemma reads the photo and writes the recipe on the GPU right here.")
+   **Backup:** open the saved recipe from the book instead of generating live.
+3. **1:00 Cook mode.** Tap **Start cooking**. It narrates step 1, shows when you'll be eating, and starts timers on
+   hands-off steps with "while that cooks, get ahead on…". Hold the mic: "Okay, what's next?" → step 2.
+   "Can I use lemon instead of lime?" → spoken answer. "How long is left?" → timer read-out.
+4. **1:50 Feedback → v2.** Tap through to **Finished**. Give 3 stars, tap **Too salty**, and say or type "I'd like it
+   spicier." Tap **Save and improve recipe**. **Version 2** appears with the changes and the reason for each.
+   Open the recipe: the v2 note and the version history.
+5. **2:30 Under the hood.** "One Gemma 4 E2B on the GPU hears, sees and writes structured recipes. A second copy on
+   the CPU watches the counter. EmbeddingGemma 2 remembers what it saw. All of it runs through LiteRT-LM."
+6. **2:50** "The more you cook, the better your recipes get, and none of it leaves the kitchen."
 
-**If something breaks:** use the quick-prompt buttons (no voice needed). If the camera fails, open
-`http://127.0.0.1:8000/?still=test/spice_jars.jpg` or `?still=test/Guacamole_IMGP1271.jpg`. If the model is wedged, restart
-`.\run.cmd mise -Dual`; it warms up in about 12 s.
+**If something breaks:** every voice action has a button (Next, Back, Repeat, Finished). If generation is slow, cook a
+starter recipe from the book; carbonara has timers and get-ahead cues. If the model is wedged, restart; it warms
+up in about 30 s. Pre-cook one recipe once before the demo so its page already shows a v2 history.
 
 ## Known facts and limits (verified tonight on this laptop)
 - Gemma 4 **E2B on the Arc GPU** is the default talk model: ~1.7–2.3 s per turn with voice + image + a tool call; transcribing a command takes 0.5–0.8 s.

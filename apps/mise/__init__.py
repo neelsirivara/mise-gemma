@@ -1,165 +1,139 @@
-"""Mise - a hands-free, fully offline sous-chef.
-The laptop camera watches the counter; you talk with messy hands; Gemma tracks
-the recipe, runs timers, and catches mistakes (double salting, raw chicken on
-the veggie board, a pan about to boil over)."""
-from __future__ import annotations
+"""Mise - the offline sous-chef that gets better every time you cook.
 
-import json
-from pathlib import Path
+Product flow (UI in web/mise/, API in routes.py):
+  photo of your cupboard + time you have  ->  ideas  ->  full recipe saved to your book
+  cook mode: narrated steps, timers, "while that simmers..." cues, voice questions
+  after cooking: rating + feedback (typed or spoken)  ->  a revised version of the recipe
+
+Modules: book.py (recipe book + versions), chef.py (model-written content, JSON-constrained),
+cook.py (cook-session state machine + time cues), routes.py (HTTP API).
+"""
+from __future__ import annotations
 
 from core.app import App
 from core.state import COMMON_TOOLS, SESSION
 
-RECIPES_DIR = Path(__file__).parent / "recipes"
+from . import book, companion
+from .cook import COOK
+from .routes import revise_in_background, router
 
 
-class Kitchen:
-    recipe: dict | None = None
-    step = 0  # 0-based
-    scale = 1.0
-    done_streak = 0
-
-
-K = Kitchen()
-
-
-def recipe_names() -> list[str]:
-    return sorted(p.stem for p in RECIPES_DIR.glob("*.json"))
-
-
-def current_step() -> str:
-    if not K.recipe:
-        return "(no recipe loaded)"
-    steps = K.recipe["steps"]
-    return steps[K.step]["text"] if K.step < len(steps) else "(recipe finished)"
-
-
-# ---------------------------------------------------------------- tools
-def load_recipe(name: str) -> dict:
-    """Loads a saved recipe by name so the cook can follow it step by step.
+# ---------------------------------------------------------------- voice tools
+def start_cooking(recipe_name: str) -> dict:
+    """Starts cook mode for a recipe in the recipe book and reads the first step aloud.
 
     Args:
-        name: Recipe name, e.g. "carbonara" or "guacamole".
+        recipe_name: The recipe's name, e.g. "guacamole".
     """
-    key = name.lower().strip().replace(" ", "_")
-    for p in RECIPES_DIR.glob("*.json"):
-        r = json.loads(p.read_text())
-        if key in p.stem or key in r["title"].lower():
-            with SESSION.lock:
-                K.recipe, K.step, K.scale = r, 0, 1.0
-                SESSION.emit("recipe", title=r["title"])
-            return {"ok": True, "title": r["title"], "steps": len(r["steps"]), "first_step": r["steps"][0]["text"]}
-    return {"ok": False, "available": recipe_names()}
+    r = book.find(recipe_name)
+    if not r:
+        return {"ok": False, "in_book": [x["title"] for x in book.all_recipes()][:12]}
+    st = COOK.start(r["id"])
+    return {"ok": True, "title": r["title"], "version": r["version"], "steps": len(st["recipe"]["steps"]),
+            "note": "Step 1 is already being read aloud; just add a short encouragement."}
 
 
-def create_recipe(title: str, ingredients: list[str], steps: list[str]) -> dict:
-    """Creates a new recipe (e.g. from ingredients seen on the counter) and loads it.
+def next_step() -> dict:
+    """Moves to the next step when the cook says done, next, or ready. The new step is read aloud automatically."""
+    st = COOK.next()
+    return {"ok": st.get("active", False), "step": st.get("step", 0) + 1,
+            "note": "The step is read aloud automatically; reply with at most a few words."}
+
+
+def previous_step() -> dict:
+    """Goes back one step. The step is read aloud automatically."""
+    st = COOK.back()
+    return {"ok": st.get("active", False), "step": st.get("step", 0) + 1}
+
+
+def repeat_step() -> dict:
+    """Reads the current step aloud again."""
+    COOK.repeat()
+    return {"ok": True, "note": "Already repeated aloud; say nothing else."}
+
+
+def time_left() -> dict:
+    """Reports the running timers and when the meal should be ready."""
+    st = COOK.state()
+    timers = [{"label": t.label, "seconds_left": round(t.remaining())} for t in SESSION.timers if not t.fired]
+    return {"timers": timers, "ready_around": st.get("eta"), "step": st.get("step", 0) + 1}
+
+
+def finish_cooking() -> dict:
+    """Ends cook mode when the cook says they're finished or plating up, then asks how it went."""
+    COOK.finish()
+    return {"ok": True, "note": "The app already asked how it went aloud; don't repeat the question."}
+
+
+def give_feedback(rating: int, notes: str) -> dict:
+    """Saves the cook's feedback on the dish they just made and improves the recipe for next time.
 
     Args:
-        title: Name of the dish.
-        ingredients: Ingredient lines with quantities, e.g. ["2 eggs", "100 g spaghetti"].
-        steps: Short imperative cooking steps, in order.
+        rating: 1 to 5 stars; estimate from their words if they don't give a number.
+        notes: What they said, in their words, e.g. "a bit too salty, onions burned".
     """
-    if K.recipe and K.recipe["title"].lower() in title.lower() and K.step == 0:
-        return {"ok": False, "note": f"'{K.recipe['title']}' is already loaded from saved recipes; use it"}
-    asked = f"{title} {SESSION.last_user}".lower()
-    saved = next((n for n in recipe_names() if n.replace("_", " ") in asked), None)
-    if saved:  # the model sometimes improvises a recipe we already have; use the tested one
-        return load_recipe(saved)
-    with SESSION.lock:
-        K.recipe = {"title": title, "servings": 2, "ingredients": ingredients, "steps": [{"text": s} for s in steps]}
-        K.step, K.scale = 0, 1.0
-        SESSION.emit("recipe", title=title)
-    return {"ok": True, "steps": len(steps)}
-
-
-def go_to_step(step_number: int) -> dict:
-    """Moves the recipe to a specific step. Call this when the cook finishes a step or asks to go forward or back.
-
-    Args:
-        step_number: 1-based step number to show next.
-    """
-    if not K.recipe:
-        return {"ok": False, "error": "no recipe loaded"}
-    n = len(K.recipe["steps"])
-    with SESSION.lock:
-        K.step = max(0, min(n, step_number - 1))
-        SESSION.emit("step", step=K.step)
-    s = K.recipe["steps"][K.step] if K.step < n else {}
-    return {"ok": True, "step": K.step + 1, "text": s.get("text", "recipe finished"),
-            "suggested_timer_minutes": s.get("timer_min")}
-
-
-def scale_recipe(multiplier: float) -> dict:
-    """Scales ingredient quantities, e.g. 2 to double or 0.5 to halve.
-
-    Args:
-        multiplier: Factor to scale the recipe by.
-    """
-    K.scale = multiplier
-    SESSION.emit("scale", multiplier=multiplier)
-    return {"ok": True}
+    rid = COOK.awaiting_feedback or (COOK.recipe or {}).get("id")
+    if not rid:
+        return {"ok": False, "error": "no recently cooked recipe"}
+    revise_in_background(rid, max(1, min(5, int(rating))), notes)
+    return {"ok": True, "note": "Revision is running; tell them you'll update the recipe and it will be ready shortly."}
 
 
 # ---------------------------------------------------------------- hooks
 def summary() -> str:
-    if not K.recipe:
-        return "RECIPE: none loaded. Saved recipes: " + ", ".join(recipe_names())
-    r = K.recipe
-    lines = [f"RECIPE: {r['title']} (serves {r.get('servings', '?')}, scaled x{K.scale:g})",
-             "INGREDIENTS: " + "; ".join(r["ingredients"])]
-    for i, s in enumerate(r["steps"]):
-        mark = ">> NOW" if i == K.step else ("done" if i < K.step else "todo")
-        extra = f" [timer {s['timer_min']} min]" if s.get("timer_min") else ""
-        lines.append(f"[{mark}] step {i + 1}: {s['text']}{extra}")
-    return "\n".join(lines)
+    s = COOK.summary()
+    if s:
+        return s
+    rows = book.all_recipes()[:12]
+    return "NOT COOKING. Recipe book: " + "; ".join(f"{r['title']} v{r['version']} ({r['total_minutes']} min)" for r in rows)
 
 
-def panels() -> list[dict]:
-    if not K.recipe:
-        return [{"title": "Recipes", "items": [{"text": n.replace("_", " ").title(), "state": "todo"} for n in recipe_names()]}]
-    r = K.recipe
-    steps = [{"text": s["text"], "state": "done" if i < K.step else "active" if i == K.step else "todo"}
-             for i, s in enumerate(r["steps"])]
-    ings = [{"text": i if K.scale == 1 else f"{i}  (×{K.scale:g})", "state": "todo"} for i in r["ingredients"]]
-    return [{"title": r["title"], "kind": "steps", "items": steps}, {"title": "Ingredients", "items": ings}]
+def panels() -> list[dict]:  # used by the generic UI only (web/index.html)
+    st = COOK.state()
+    if not st.get("recipe"):
+        return [{"title": "Recipe book", "items": [{"text": r["title"], "state": "todo"} for r in book.all_recipes()[:8]]}]
+    r = st["recipe"]
+    return [{"title": r["title"], "kind": "steps", "items": [
+        {"text": s["text"], "state": "done" if i < st["step"] else "active" if i == st["step"] else "todo"}
+        for i, s in enumerate(r["steps"])]}]
 
 
 def watch_context() -> str:
+    st = COOK.state()
+    if not st.get("active"):
+        return "The cook is not following a recipe right now."
+    s = st["recipe"]["steps"][st["step"]]
     actions = "; ".join(e["text"] for e in SESSION.log[-5:]) or "none"
-    check = ""
-    if K.recipe and K.step < len(K.recipe["steps"]):
-        check = K.recipe["steps"][K.step].get("check", "")
-    return f"Current recipe step: {current_step()}\nWhat 'done' looks like: {check or 'use judgement'}\nRecent actions: {actions}"
+    return f"Current step: {s['text']}\nWhat 'done' looks like: {s.get('check') or 'use judgement'}\nRecent actions: {actions}"
+
+
+_watch = {"done_streak": 0}
 
 
 def on_watch(data: dict):
-    # require two consecutive "done" frames before nudging, the small watcher is optimistic
-    K.done_streak = K.done_streak + 1 if data.get("done") else 0
-    if K.done_streak == 2 and K.recipe and K.step < len(K.recipe["steps"]):
-        SESSION.emit("suggest", text=f"Looks like step {K.step + 1} is done. Say 'next' to continue.")
+    # two consecutive "done" frames before nudging; the small watcher is optimistic
+    _watch["done_streak"] = _watch["done_streak"] + 1 if data.get("done") else 0
+    if _watch["done_streak"] == 2 and COOK.active:
+        SESSION.emit("suggest", text="Looks like this step is done. Say next when you're ready.")
 
 
 def reset():
-    K.recipe, K.step, K.scale = None, 0, 1.0
+    COOK.stop()
 
 
-SYSTEM = """You are Mise, a hands-free sous-chef running fully offline on this laptop.
-The cook has messy hands, so they talk to you and you see their counter through a camera.
+SYSTEM = """You are Mise, a warm, efficient voice companion in the kitchen. Everything runs offline on this laptop.
+The cook's hands are busy: they talk to you, and the camera frame shows their counter when one is attached.
 
 Rules:
-- After calling tools, always say one short sentence confirming what you did.
-- For questions about the past ("did I already...", "where did I leave/see..."), check RECENT ACTIONS first, then call recall.
-- Replies are spoken aloud: 1-3 short sentences, no markdown, no lists, no emoji.
-- Use tools to change anything: timers, steps, recipes, logging. Never claim you did something without calling the tool.
-- When the cook says they finished a step ("done", "next"), call go_to_step with the next number and read the new step.
-  If the new step has a timer, offer to start it (start it right away if they asked).
-- When you see or hear them add a seasoning or ingredient, call log_action. Use RECENT ACTIONS to catch mistakes
-  (e.g. salting twice) and warn them.
-- If the cook names a dish that is in the saved recipes list, call load_recipe (never create_recipe for it).
-- If asked what to make, look at the image and call create_recipe with a simple dish using what is visible; pass steps as a list.
-- When an image is attached, ground answers in what is actually visible. Say when you're unsure.
-- Flag food-safety issues: undercooked poultry, cross-contamination, unattended hot oil.
+- Replies are spoken aloud: one or two short sentences, no markdown, no lists, no emoji.
+- Use tools for anything that changes state. Never claim you moved a step, set a timer, or saved feedback without calling the tool.
+- In cook mode: "next", "done", "ready" -> next_step. "back" -> previous_step. "again", "what?" -> repeat_step.
+  "how long?" -> time_left. "finished", "we're eating" -> finish_cooking. Steps are read aloud by the app itself,
+  so after next_step/previous_step/repeat_step reply with at most a few words or nothing.
+- Answer cooking questions about the current step concretely (heat, doneness, substitutions) from the recipe and image.
+- After cooking, when they describe how it went, call give_feedback with a 1-5 rating and their words.
+- When they ask to cook something in the recipe book, call start_cooking.
+- To catch mistakes, call log_action when they add salt or other key ingredients; for "did I already...", check RECENT ACTIONS, then call recall.
 - If the audio is clearly not directed at you (background chatter), reply with exactly: NOOP
 
 {state}
@@ -174,19 +148,27 @@ Reply with ONLY a JSON object:
   "done": <true if the current step looks complete, else false>,
   "alert": "<short spoken warning ONLY for a real problem (burning, boiling over, smoke, knife near edge, raw meat touching other food), else empty string>"}}"""
 
+book.seed()
+
 APP = App(
     id="mise",
     name="Mise",
-    tagline="The offline sous-chef that watches, listens, and keeps up.",
+    tagline="The offline sous-chef that gets better every time you cook.",
     system=SYSTEM,
     watch_prompt=WATCH_PROMPT,
-    tools=COMMON_TOOLS + [load_recipe, create_recipe, go_to_step, scale_recipe],
+    tools=COMMON_TOOLS + [start_cooking, next_step, previous_step, repeat_step, time_left, finish_cooking, give_feedback],
     summary=summary,
     panels=panels,
     watch_context=watch_context,
     on_watch=on_watch,
     reset=reset,
-    quick_prompts=["Let's make guacamole", "What can I make with what's on my counter?", "Next step", "Which jar is the cumin?",
-                   "Set a timer for 30 seconds", "Does this look right?", "I just added the salt"],
-    accent="#e8743b",
+    quick_prompts=["Let's cook the guacamole", "Next", "Say that again", "How long is left?", "We're finished",
+                   "It was great but a bit too salty"],
+    accent="#2b4fd8",
+    router=router,
+    web_entry="mise/index.html",
+    tick=COOK.tick,
+    history_scope=lambda: f"{(COOK.recipe or {}).get('id')}:{(COOK.recipe or {}).get('version')}",
+    # while cooking (or right after), voice goes through the structured intent router; otherwise tool chat
+    chat=lambda text, image, audio: companion.handle(text, image, audio) if companion.active() else None,
 )

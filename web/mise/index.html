@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Mise</title>
+  <meta name="description" content="Offline sous-chef: photograph your cupboard, cook step by step by voice, and improve the recipe every time." />
+  <meta name="theme-color" content="#f4f6fa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0d1322" media="(prefers-color-scheme: dark)" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Mise" />
+  <link rel="manifest" href="/mise/manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="/icons/favicon.png" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <link rel="stylesheet" href="/mise/mise.css" />
+</head>
+<body>
+  <header class="top">
+    <div class="top-in">
+      <button class="brand" id="homeBtn" aria-label="Mise home"><span class="brand-mark" aria-hidden="true"></span>Mise</button>
+      <nav class="nav" aria-label="Main">
+        <button data-go="home" id="navBook">Recipe book</button>
+        <button data-go="pantry" id="navPantry">What can I make?</button>
+      </nav>
+      <div class="status">
+        <span class="pill" id="netPill" title="Mise never uses the internet">offline-ready</span>
+        <button class="pill pill-btn" id="hubPill" title="The laptop running the models">connecting…</button>
+      </div>
+    </div>
+  </header>
+
+  <main id="app" class="shell" tabindex="-1">
+    <p class="loading">Starting Mise…</p>
+  </main>
+
+  <dialog id="hubDialog" class="sheet">
+    <form method="dialog" class="sheet-in">
+      <h2>Connect to your Mise hub</h2>
+      <p>The models run on your laptop. Enter the address <b>run.cmd -Phone</b> printed, like
+        <code>https://172.20.10.2:8443</code>. Leave it empty to use this page's own server.</p>
+      <label for="hubInput" class="label">Hub address</label>
+      <input id="hubInput" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://<laptop-ip>:8443" />
+      <div class="row end">
+        <button value="cancel" class="btn ghost">Cancel</button>
+        <button value="save" class="btn primary" id="hubSave">Connect</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+  <script type="module" src="/mise/js/main.js"></script>
+</body>
+</html>

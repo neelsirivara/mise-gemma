@@ -1,13 +1,17 @@
-"""Autonomous browser test of the real UI: real Chrome/Edge, fake webcam + fake mic, real models.
+"""Autonomous browser test of the CLASSIC demo UI (web/index.html), written for the first Mise demo flow.
+The Mise product UI (web/mise/) is covered by scripts/mise_ui_test.py; this file is kept for the generic UI
+that Bench and Sight use, and its Mise-specific checks predate the recipe book.
+
+Autonomous browser test of the real UI: real Chrome/Edge, fake webcam + fake mic, real models.
 
 Starts its own server on a spare port, drives the page like a person (hold Space to talk,
 hands-free voice, watch loop, quick prompts), checks the results, and saves screenshots
 plus a JSON report to assets/ui_test/.
 
-  .venv\\Scripts\\python scripts\\ui_test.py                 # desktop suite
-  .venv\\Scripts\\python scripts\\ui_test.py --mobile        # + iPhone-sized run
-  .venv\\Scripts\\python scripts\\ui_test.py --headed        # watch it happen
-  .venv\\Scripts\\python scripts\\ui_test.py --url https://127.0.0.1:8443   # test an already-running server
+  python scripts/ui_test.py                 # desktop suite
+  python scripts/ui_test.py --mobile        # + iPhone-sized run
+  python scripts/ui_test.py --headed        # watch it happen
+  python scripts/ui_test.py --url https://127.0.0.1:8443   # test an already-running server
 """
 from __future__ import annotations
 
@@ -26,7 +30,7 @@ from playwright.sync_api import Page, sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 FAKE = ROOT / "assets" / "fake"
 OUT = ROOT / "assets" / "ui_test"
-PY = ROOT / ".venv" / "Scripts" / "python.exe"
+PY = Path(sys.executable)
 
 ap = argparse.ArgumentParser()
 ap.add_argument("--app", default="mise")

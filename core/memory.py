@@ -6,6 +6,7 @@ Falls back to keyword search over captions when the embedder isn't available."""
 from __future__ import annotations
 
 import math
+import os
 import threading
 import time
 from dataclasses import dataclass, field
@@ -38,9 +39,15 @@ class Memory:
         if self.embedder is None and not self.embed_error:
             try:
                 import litert_lm
-                self.embedder = litert_lm.EmbeddingEngine(
+                mk = lambda cache: litert_lm.EmbeddingEngine(
                     str(EMBED_MODEL), backend=litert_lm.Backend.GPU(), vision_backend=litert_lm.Backend.GPU(),
-                    cache_dir=str(config.CACHE_DIR))
+                    cache_dir=str(cache))
+                try:
+                    self.embedder = mk(config.CACHE_DIR)
+                except Exception:  # cache locked by another server process
+                    alt = config.CACHE_DIR / f"proc-{os.getpid()}"
+                    alt.mkdir(parents=True, exist_ok=True)
+                    self.embedder = mk(alt)
             except Exception as e:  # missing file / unsupported backend
                 self.embed_error = f"{type(e).__name__}: {e}"
         return self.embedder

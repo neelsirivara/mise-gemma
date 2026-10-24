@@ -30,6 +30,8 @@ class App:
     web_entry: str = "index.html"  # page served at "/", relative to web/
     tick: Callable[[], None] = lambda: None  # called ~1/s from the UI poll (time-based cues)
     history_scope: Callable[[], str] = lambda: ""  # history resets when this changes (e.g. cooking a new recipe)
+    # optional custom conversation handler: (text, image, audio) -> event iterator, or None to use tool chat
+    chat: Callable[[Any, Any, Any], Any] | None = None
 
 
 def load(app_id: str) -> App:
