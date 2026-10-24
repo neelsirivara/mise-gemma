@@ -1,27 +1,15 @@
-// Home: the way in ("what's in your cupboard?") and the recipe book.
+// Recipe book: every dish you've made, with its version stamp. The landing page is the pantry view.
 import { getJSON } from "/lib/api.js";
 import { ago, html, mount, raw, stars } from "../ui.js";
 
 export async function enter(root, _params, app) {
   mount(root, html`
-    <section class="home">
-      <div class="hero">
-        <p class="label">Gemma 4 · runs on this laptop</p>
-        <h1>Cook what you have, better every time.</h1>
-        <p class="lead">Snap your cupboard, say how long you've got, and Mise talks you through it step by step.
-          Tell it how it went and the recipe improves for next time.</p>
-        <ol class="how">
-          <li>Photograph your cupboard or fridge.</li>
-          <li>Pick an idea that fits your time.</li>
-          <li>Cook hands-free with spoken steps and timers.</li>
-          <li>Give feedback; Mise saves a better version.</li>
-        </ol>
-        <div class="row"><button class="btn primary big" id="goPantry">What can I make?</button></div>
+    <section class="book-page stack">
+      <div class="book-head">
+        <div><h1>Recipe book</h1><p class="muted" id="count"></p></div>
+        <button class="btn primary" id="goPantry">What can I cook?</button>
       </div>
-      <div class="stack">
-        <div class="book-head"><h2>Recipe book</h2><span class="muted" id="count"></span></div>
-        <div class="book" id="book"><p class="muted">Loading your recipes…</p></div>
-      </div>
+      <div class="book" id="book"><p class="muted">Loading your recipes…</p></div>
     </section>`);
   root.querySelector("#goPantry").onclick = () => app.go("pantry");
 
@@ -29,7 +17,7 @@ export async function enter(root, _params, app) {
   root.querySelector("#count").textContent = rows.length ? `${rows.length} recipe${rows.length > 1 ? "s" : ""}` : "";
   const book = root.querySelector("#book");
   if (!rows.length) {
-    book.innerHTML = `<div class="empty">No recipes yet. Photograph your cupboard to make the first one.</div>`;
+    book.innerHTML = `<div class="empty">No recipes yet. Take a photo of your fridge to make the first one.</div>`;
     return;
   }
   book.innerHTML = rows.map((r) => html`

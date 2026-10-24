@@ -3,13 +3,14 @@
 import { HUB, getJSON, normalizeHub, recoverHub, stream, url } from "/lib/api.js";
 import { Mic, Speaker, SentenceSpeaker, beep } from "/lib/voice.js";
 import { $, $$, toast } from "./ui.js";
+import * as capture from "./views/capture.js";
 import * as home from "./views/home.js";
 import * as pantry from "./views/pantry.js";
 import * as recipe from "./views/recipe.js";
 import * as cook from "./views/cook.js";
 import * as feedback from "./views/feedback.js";
 
-const VIEWS = { home, pantry, recipe, cook, feedback };
+const VIEWS = { capture, home, pantry, recipe, cook, feedback };
 const root = $("#app");
 
 export const app = {
@@ -27,7 +28,8 @@ export const app = {
     this.params = params;
     this.view = VIEWS[name];
     document.body.classList.toggle("cooking", name === "cook");
-    $$(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name ? "page" : "false"));
+    document.body.classList.toggle("capturing", name === "capture");
+    $$(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "pantry" && name === "capture") ? "page" : "false"));
     root.innerHTML = "";
     this.view.enter(root, params, this);
     root.focus({ preventScroll: true });
@@ -129,7 +131,7 @@ $("#hubDialog").addEventListener("close", () => {
 
 // ---------------------------------------------------------------- boot
 $$(".nav button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
-$("#homeBtn").onclick = () => app.go("home");
+$("#homeBtn").onclick = () => app.go("pantry");
 addEventListener("online", updateNet);
 addEventListener("offline", updateNet);
 updateNet();
@@ -155,7 +157,7 @@ async function boot() {
   if (cs.active) app.go("cook");
   else if (cs.awaiting_feedback) app.go("feedback", { id: cs.awaiting_feedback });
   else if (last && VIEWS[last.name] && last.name !== "cook") app.go(last.name, last.params);
-  else app.go("home");
+  else app.go("pantry"); // first screen: the four steps, camera live in step 1
 }
 boot();
 window.mise = app; // handy in devtools and for the UI tests

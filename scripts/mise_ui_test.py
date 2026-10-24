@@ -3,7 +3,7 @@
   python scripts/mise_ui_test.py            # starts its own server on :8060 with a temp recipe book
   python scripts/mise_ui_test.py --headed
 
-Flow: book → photograph cupboard (2 photos) → 20 min → ideas → write recipe → cook (narration,
+Flow: landing (4 steps, live camera) → book → photograph fridge (2 photos) → 20 min → ideas → write recipe → cook (narration,
 spoken "next" through the fake mic, buttons) → feedback → version 2 shown → phone layout.
 Screenshots of every screen go to assets/ui_test/mise_*.png.
 """
@@ -65,6 +65,14 @@ with sync_playwright() as pw:
     page.goto(BASE + "/")
     page.evaluate("window.mise.speaker.enabled = false")  # headless has no voices; keep timing deterministic
 
+    print("\n== first screen: the four steps, camera live in step 1")
+    page.wait_for_selector(".landing", timeout=15000)
+    page.wait_for_function("document.querySelector('#vfVideo').videoWidth > 0", timeout=10000)
+    check("landing shows 4 steps", page.locator(".step-head h2").count() == 4, page.locator(".step-head h2").all_inner_texts())
+    check("all steps fit one laptop screen", page.evaluate("document.querySelector('#find').getBoundingClientRect().bottom <= innerHeight"))
+    page.screenshot(path=str(OUT / "mise_landing.png"))
+    page.click("[data-go='home']")
+
     print("\n== home + recipe book")
     page.wait_for_selector(".recipe-row", timeout=15000)
     check("book lists starter recipes", page.locator(".recipe-row").count() >= 4)
@@ -73,12 +81,18 @@ with sync_playwright() as pw:
 
     print("\n== pantry: photos + time → ideas → recipe")
     page.click("#goPantry")
-    for img in ["spice_jars.jpg", "Avocado_Hass_-_single_and_halved.jpg"]:
-        with page.expect_file_chooser() as fc:
-            page.click("#addPhoto")
-        fc.value.set_files(str(TEST / img))
-        page.wait_for_timeout(300)
+    page.wait_for_selector("#upload")
+    with page.expect_file_chooser() as fc:
+        page.click("#upload")
+    fc.value.set_files([str(TEST / "spice_jars.jpg"), str(TEST / "Avocado_Hass_-_single_and_halved.jpg")])
+    page.wait_for_function("document.querySelectorAll('.photo').length === 2")  # the scan starts straight away
     check("2 photos attached", page.locator(".photo").count() == 2)
+    page.click("#vfExpand")
+    page.wait_for_selector("#capShutter")
+    check("full-screen camera shares the photos", page.locator(".cap-thumb").count() == 2)
+    page.screenshot(path=str(OUT / "mise_capture.png"))
+    page.click("#capClose")
+    page.wait_for_selector(".landing")
     page.click("#times button[data-m='20']")
     t = time.time()
     page.click("#find")
@@ -153,6 +167,10 @@ with sync_playwright() as pw:
     mctx = browser.new_context(**m, permissions=["camera", "microphone"])
     mp = mctx.new_page()
     mp.goto(BASE + "/")
+    mp.wait_for_selector(".landing", timeout=15000)
+    check("phone landing: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
+    mp.screenshot(path=str(OUT / "mise_phone_landing.png"), full_page=True)
+    mp.click("[data-go='home']")
     mp.wait_for_selector(".recipe-row", timeout=15000)
     check("phone home: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
     mp.screenshot(path=str(OUT / "mise_phone_home.png"), full_page=True)
