@@ -3,7 +3,7 @@
   python scripts/mise_ui_test.py            # starts its own server on :8060 with a temp recipe book
   python scripts/mise_ui_test.py --headed
 
-Flow: book → photograph cupboard (2 photos) → 20 min → ideas → write recipe → cook (narration,
+Flow: camera first → book → photograph cupboard (2 photos) → 20 min → ideas → write recipe → cook (narration,
 spoken "next" through the fake mic, buttons) → feedback → version 2 shown → phone layout.
 Screenshots of every screen go to assets/ui_test/mise_*.png.
 """
@@ -65,6 +65,13 @@ with sync_playwright() as pw:
     page.goto(BASE + "/")
     page.evaluate("window.mise.speaker.enabled = false")  # headless has no voices; keep timing deterministic
 
+    print("\n== first screen: camera")
+    page.wait_for_selector("#capShutter", timeout=15000)
+    page.wait_for_function("document.querySelector('#capVideo').videoWidth > 0", timeout=10000)
+    check("opens on the live camera", page.is_disabled("#capDone"))
+    page.screenshot(path=str(OUT / "mise_capture.png"))
+    page.click("#capClose")
+
     print("\n== home + recipe book")
     page.wait_for_selector(".recipe-row", timeout=15000)
     check("book lists starter recipes", page.locator(".recipe-row").count() >= 4)
@@ -73,11 +80,13 @@ with sync_playwright() as pw:
 
     print("\n== pantry: photos + time → ideas → recipe")
     page.click("#goPantry")
-    for img in ["spice_jars.jpg", "Avocado_Hass_-_single_and_halved.jpg"]:
-        with page.expect_file_chooser() as fc:
-            page.click("#addPhoto")
-        fc.value.set_files(str(TEST / img))
-        page.wait_for_timeout(300)
+    page.wait_for_selector("#capGallery")
+    with page.expect_file_chooser() as fc:
+        page.click("#capGallery")
+    fc.value.set_files([str(TEST / "spice_jars.jpg"), str(TEST / "Avocado_Hass_-_single_and_halved.jpg")])
+    page.wait_for_function("document.querySelectorAll('.cap-thumb').length === 2")
+    page.click("#capDone")  # Done starts the scan straight away
+    page.wait_for_selector(".pantry")
     check("2 photos attached", page.locator(".photo").count() == 2)
     page.click("#times button[data-m='20']")
     t = time.time()
@@ -153,6 +162,10 @@ with sync_playwright() as pw:
     mctx = browser.new_context(**m, permissions=["camera", "microphone"])
     mp = mctx.new_page()
     mp.goto(BASE + "/")
+    mp.wait_for_selector("#capShutter", timeout=15000)
+    check("phone camera: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
+    mp.screenshot(path=str(OUT / "mise_phone_capture.png"))
+    mp.click("#capClose")
     mp.wait_for_selector(".recipe-row", timeout=15000)
     check("phone home: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
     mp.screenshot(path=str(OUT / "mise_phone_home.png"), full_page=True)

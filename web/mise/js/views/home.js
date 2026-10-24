@@ -1,4 +1,4 @@
-// Home: the way in ("what's in your cupboard?") and the recipe book.
+// Home: the recipe book, plus a way back to the camera ("what can I make?").
 import { getJSON } from "/lib/api.js";
 import { ago, html, mount, raw, stars } from "../ui.js";
 
@@ -23,7 +23,7 @@ export async function enter(root, _params, app) {
         <div class="book" id="book"><p class="muted">Loading your recipes…</p></div>
       </div>
     </section>`);
-  root.querySelector("#goPantry").onclick = () => app.go("pantry");
+  root.querySelector("#goPantry").onclick = () => app.go("capture");
 
   const rows = await getJSON("/api/mise/book").catch(() => []);
   root.querySelector("#count").textContent = rows.length ? `${rows.length} recipe${rows.length > 1 ? "s" : ""}` : "";

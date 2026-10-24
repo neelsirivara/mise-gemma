@@ -1,31 +1,32 @@
 // "What can I make?": photos of the cupboard + time you have → ingredients → ideas → full recipe.
 import { postForm, postJSON, stream } from "/lib/api.js";
-import { shrink, snapshot, startCamera, stopCamera } from "/lib/camera.js";
+import { shrink } from "/lib/camera.js";
 import { $, html, mount, raw, toast } from "../ui.js";
 
 const TIMES = [15, 20, 30, 45, 60, 90];
 let S = null; // kept while the app is open, so going back doesn't lose your photos
 
 function fresh() {
-  return { photos: [], minutes: 30, servings: 2, notes: "", items: [], ideas: [], scanning: false, thinking: false };
+  return { photos: [], scanned: new Set(), scanP: null, minutes: 30, servings: 2, notes: "", items: [], ideas: [], scanning: false, thinking: false };
+}
+
+// The camera screen adds its photos straight into this list.
+export function photos() {
+  S = S || fresh();
+  return S.photos;
 }
 
 export function enter(root, params, app) {
   S = S && !params.reset ? S : fresh();
   mount(root, html`
-    <button class="back" id="back">← Recipe book</button>
+    <button class="back" id="back">← Back to the camera</button>
     <section class="pantry">
       <div class="stack">
         <div class="card stack">
-          <div><p class="label">Step 1</p><h2>Show me your cupboard</h2></div>
-          <p class="muted">Take a photo of a shelf, the fridge or the counter. Two or three photos work best.</p>
+          <div><p class="label">Step 1</p><h2>Your photos</h2></div>
           <div class="photos" id="photos"></div>
-          <div class="cam-box" id="camBox" hidden>
-            <video id="camVideo" playsinline muted></video>
-            <button class="btn primary snap" id="snap">Take photo</button>
-          </div>
           <div class="row">
-            <button class="btn ghost" id="liveCam">Use live camera</button>
+            <button class="btn ghost" id="liveCam">Open the camera</button>
             <span class="muted" id="photoHint"></span>
           </div>
         </div>
@@ -48,8 +49,8 @@ export function enter(root, params, app) {
       <div class="stack" id="results"></div>
     </section>`);
 
-  const go = (v, p) => { stopCamera($("#camVideo")); app.go(v, p); };
-  $("#back").onclick = () => go("home");
+  const go = (v, p) => app.go(v, p);
+  $("#back").onclick = () => go("capture");
 
   // ---- photos
   const fileInput = Object.assign(document.createElement("input"), { type: "file", accept: "image/*", multiple: true });
@@ -68,15 +69,7 @@ export function enter(root, params, app) {
     $("#photoHint").textContent = S.photos.length ? `${S.photos.length} photo${S.photos.length > 1 ? "s" : ""}` : "";
   }
   drawPhotos();
-  $("#liveCam").onclick = async () => {
-    const box = $("#camBox");
-    if (!box.hidden) { stopCamera($("#camVideo")); box.hidden = true; return; }
-    try { await startCamera($("#camVideo")); box.hidden = false; } catch (e) { toast("Camera unavailable: " + e.message); }
-  };
-  $("#snap").onclick = async () => {
-    const b = await snapshot($("#camVideo"), 1280);
-    if (b) { S.photos.push(b); drawPhotos(); toast("Photo added"); }
-  };
+  $("#liveCam").onclick = () => go("capture");
 
   // ---- time + servings
   root.querySelectorAll("#times button").forEach((b) => (b.onclick = () => {
@@ -88,19 +81,32 @@ export function enter(root, params, app) {
   $("#more").onclick = () => serv(1);
   $("#notes").oninput = (e) => (S.notes = e.target.value);
 
-  // ---- find: scan photos (if any), then ideas
-  $("#find").onclick = async () => {
-    if (!S.photos.length && !S.items.length) { toast("Add a photo of your cupboard, or type ingredients below."); drawResults(true); return; }
-    if (S.photos.length) {
-      S.scanning = true; S.ideas = []; drawResults();
+  // ---- scan: read any photos not read yet. Runs as soon as you arrive from the camera,
+  // so the ingredients are ready by the time you've picked how long you have.
+  function scan() {
+    if (S.scanP) return S.scanP;
+    const todo = S.photos.filter((p) => !S.scanned.has(p));
+    if (!todo.length) return Promise.resolve();
+    const st = S;
+    st.scanning = true; st.ideas = []; drawResults();
+    st.scanP = (async () => {
       try {
         const fd = new FormData();
-        S.photos.forEach((p, i) => fd.append("images", p, `photo${i}.jpg`));
+        todo.forEach((p, i) => fd.append("images", p, `photo${i}.jpg`));
         const r = await postForm("/api/mise/pantry/scan", fd);
-        S.items = [...new Set([...r.items, ...S.items])];
+        todo.forEach((p) => st.scanned.add(p));
+        st.items = [...new Set([...r.items, ...st.items])];
       } catch (e) { toast(e.message); }
-      S.scanning = false;
-    }
+      st.scanning = false; st.scanP = null;
+      if (S === st) drawResults();
+    })();
+    return st.scanP;
+  }
+
+  // ---- find: finish the scan, then ideas
+  $("#find").onclick = async () => {
+    if (!S.photos.length && !S.items.length) { toast("Add a photo of your cupboard, or type ingredients below."); drawResults(true); return; }
+    await scan();
     await ideas();
   };
 
@@ -116,6 +122,7 @@ export function enter(root, params, app) {
 
   function drawResults(forceItems = false) {
     const el = $("#results");
+    if (!el) return; // the scan finished after you left this page
     if (S.scanning) { el.innerHTML = `<div class="card stack"><h2>Looking in your cupboard…</h2><div class="progress"><i style="width:40%"></i></div><p class="muted">Gemma is reading the photos on this laptop.</p></div>`; return; }
     if (!S.items.length && !forceItems && !S.ideas.length) {
       el.innerHTML = `<div class="empty">Your ingredients and recipe ideas will show up here.</div>`;
@@ -178,6 +185,6 @@ export function enter(root, params, app) {
   function el_disable(on) { root.querySelectorAll("[data-idea]").forEach((b) => (b.disabled = on || b.disabled)); }
 
   drawResults();
+  if (params.scan) scan();
 }
 
-export function leave() { stopCamera(document.getElementById("camVideo")); }
