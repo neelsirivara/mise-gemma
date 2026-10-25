@@ -3,9 +3,13 @@
 import { getJSON, postForm, postJSON } from "/lib/api.js";
 import { snapshot, startCamera, stopCamera } from "/lib/camera.js";
 import { $, MIC_ICON, clock, html, mins, mount, raw, toast } from "../ui.js";
+import { MUMS, mountMum, savedMum } from "../mum.js";
+import { SCENES, VERB, sceneFor } from "../scenes.js";
 
 let off = [];
 let st = null;
+let mum = null;   // the cooking teacher over the camera
+let shown = -1;   // step index on screen, so mum hops when it changes
 
 export async function enter(root, _params, app) {
   mount(root, html`
@@ -21,7 +25,6 @@ export async function enter(root, _params, app) {
       </div>
       <div class="stack" style="justify-content:center;gap:18px">
         <div class="stage" id="stage"></div>
-        <p class="said" id="said" aria-live="polite"></p>
         <div class="row" style="align-items:flex-start;gap:16px">
           <div class="pip" id="pip" hidden><video id="cookCam" playsinline muted></video></div>
           <div class="stack" style="flex:1;min-width:220px;gap:8px">
@@ -29,6 +32,7 @@ export async function enter(root, _params, app) {
               <label><input type="checkbox" id="handsFree"> Always listening</label>
               <label><input type="checkbox" id="useCam"> Camera</label>
               <label><input type="checkbox" id="speak" checked> Read aloud</label>
+              <label>Mum <select id="mumPick">${raw(MUMS.map((m) => html`<option value="${m.id}">${m.label}</option>`).join(""))}</select></label>
             </div>
             <div class="convo" id="convo"></div>
           </div>
@@ -37,6 +41,10 @@ export async function enter(root, _params, app) {
             <ul class="ing" id="ings"></ul>
           </details>
         </div>
+      </div>
+      <div class="mum-dock" aria-live="polite">
+        <p class="said mum-say" id="said"></p>
+        <div class="mum" id="mum" aria-hidden="true"></div>
       </div>
       <div class="cook-bar">
         <div class="left">
@@ -50,6 +58,12 @@ export async function enter(root, _params, app) {
         <div class="right"><button class="btn primary big" id="nextBtn">Next →</button></div>
       </div>
     </section>`);
+
+  // ---- mum: always a little alive; her mouth follows the voice; pick yours (remembered)
+  mum = mountMum($("#mum"), app.speaker, { id: savedMum(), height: matchMedia("(max-width: 820px)").matches ? 190 : 290 });
+  $("#mumPick").value = mum.id;
+  $("#mumPick").onchange = (e) => { mum.set(e.target.value); app.speaker.say(`Hi, ${mum.hello()}! I'm here. Let's cook.`, { interrupt: true }); };
+  shown = -1;
 
   const act = async (a) => { try { st = await postJSON(`/api/mise/cook/${a}`); draw(); } catch (e) { toast(e.message); } };
   $("#nextBtn").onclick = () => (st && st.step >= st.recipe.steps.length - 1 ? finish() : act("next"));
@@ -100,6 +114,7 @@ export async function enter(root, _params, app) {
   let watchT = null;
   $("#useCam").onchange = async (e) => {
     $("#pip").hidden = !e.target.checked;
+    document.body.classList.toggle("camfull", e.target.checked); // the camera fills the screen behind mum
     clearInterval(watchT);
     if (e.target.checked) {
       await startCamera($("#cookCam")).catch((err) => { toast("Camera unavailable: " + err.message); e.target.checked = false; $("#pip").hidden = true; });
@@ -112,6 +127,7 @@ export async function enter(root, _params, app) {
         fd.append("image", f, "frame.jpg");
         postForm("/api/watch", fd).catch(() => {});
       }, 8000);
+      if (!e.target.checked) document.body.classList.remove("camfull");
     } else stopCamera($("#cookCam"));
   };
   $("#speak").onchange = (e) => { app.speaker.enabled = e.target.checked; if (!e.target.checked) app.speaker.stop(); };
@@ -161,6 +177,7 @@ function draw() {
   if (!st?.recipe || !$("#stage")) return;
   const r = st.recipe, i = st.step, s = r.steps[i], n = r.steps.length;
   const next = r.steps[i + 1];
+  const scene = sceneFor(s.text);
   $("#title").textContent = `${r.title}${r.version > 1 ? ` · v${r.version}` : ""}`;
   $("#eta").textContent = st.eta ? `Eat around ${st.eta}` : "";
   $("#segbar").innerHTML = r.steps.map((_, k) => `<i class="${k < i ? "done" : k === i ? "now" : ""}"></i>`).join("");
@@ -172,7 +189,9 @@ function draw() {
       ${raw(s.timer ? `<span class="muted">Timer running</span>` : "")}
       ${raw(s.check ? html`<span class="muted">Done when: ${s.check}</span>` : "")}
     </div>
-    ${raw(s.timer && next && !next.timer && s.minutes >= 3 ? html`<p class="ahead"><b>While that cooks:</b> ${next.text}</p>` : "")}`;
+    ${raw(s.timer && next && !next.timer && s.minutes >= 3 ? html`<p class="ahead"><b>While that cooks:</b> ${next.text}</p>` : "")}
+    ${raw(scene ? `<div class="scene" data-kind="${scene}"><span class="verb">${VERB[scene]}</span>${SCENES[scene]}</div>` : "")}`;
+  if (i !== shown) { if (shown >= 0) mum?.hop(); shown = i; }
   $("#said").textContent = st.last_said || "";
   $("#nextBtn").textContent = i >= n - 1 ? "Finished ✓" : "Next →";
   $("#backBtn").disabled = i === 0;
@@ -195,5 +214,8 @@ function drawTimers(timers = []) {
 export function leave() {
   off.forEach((f) => f());
   off = [];
+  mum?.destroy();
+  mum = null;
+  document.body.classList.remove("camfull");
   stopCamera(document.getElementById("cookCam"));
 }

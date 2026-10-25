@@ -197,19 +197,41 @@ export class Speaker {
         if (item.gen !== this.gen) return;
         const src = this.ctx.createBufferSource();
         src.buffer = audio;
-        src.connect(this.ctx.destination);
+        src.connect(this.#meter()); // -> analyser -> speakers, so the mum's mouth can follow the voice
         this.source = src;
+        this.mode = "hub";
         src.onended = () => { if (item.gen === this.gen) this.#next(); };
         src.start();
         return;
       } catch {}
     }
-    // browser voice fallback
+    // browser voice fallback (no level meter: the mum's mouth just flaps while it talks)
+    this.mode = "browser";
     const u = new SpeechSynthesisUtterance(item.text);
     if (this.voice) u.voice = this.voice;
     u.rate = 1.03;
     u.onend = u.onerror = () => { if (item.gen === this.gen) this.#next(); };
     speechSynthesis.speak(u);
+  }
+
+  #meter() {
+    if (!this.analyser) {
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 512;
+      this.analyser.connect(this.ctx.destination);
+      this.levelBuf = new Float32Array(this.analyser.fftSize);
+    }
+    return this.analyser;
+  }
+
+  // Loudness of the hub voice right now, 0..1 (null when the browser voice is talking: no meter there)
+  level() {
+    if (!this.speaking) return 0;
+    if (this.mode !== "hub" || !this.analyser) return null;
+    this.analyser.getFloatTimeDomainData(this.levelBuf);
+    let sum = 0;
+    for (const x of this.levelBuf) sum += x * x;
+    return Math.min(1, Math.sqrt(sum / this.levelBuf.length) * 7);
   }
 
   stop() {
