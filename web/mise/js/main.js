@@ -30,7 +30,7 @@ export const app = {
     this.view = VIEWS[name];
     document.body.classList.toggle("cooking", name === "cook");
     document.body.classList.toggle("capturing", name === "capture");
-    $$(".nav button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "pantry" && name === "capture") ? "page" : "false"));
+    $$(".nav button, .tabbar button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "pantry" && name === "capture") ? "page" : "false"));
     root.innerHTML = "";
     this.view.enter(root, params, this);
     root.focus({ preventScroll: true });
@@ -145,7 +145,7 @@ $("#hubDialog").addEventListener("close", () => {
 });
 
 // ---------------------------------------------------------------- boot
-$$(".nav button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
+$$(".nav button, .tabbar button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
 $("#homeBtn").onclick = () => app.go("pantry");
 if ("serviceWorker" in navigator && isSecureContext) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
