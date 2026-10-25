@@ -10,7 +10,8 @@ const EXPAND = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15
 let S = null; // kept while the app is open, so going back doesn't lose your photos
 
 function fresh() {
-  return { photos: [], scanned: new Set(), scanP: null, minutes: 30, servings: 2, notes: "", items: [], ideas: [], scanning: false, thinking: false };
+  return { photos: [], scanned: new Set(), scanP: null, minutes: 30, servings: 2, notes: "", items: [], removed: new Set(), ideas: [],
+           scanning: false, thinking: false, finding: false, writing: false };
 }
 
 // The camera screen adds its photos straight into this list.
@@ -18,6 +19,9 @@ export function photos() {
   S = S || fresh();
   return S.photos;
 }
+
+// something the user would lose on a reload (the auto-update in main.js waits while this is true)
+export const busy = () => !!S && (S.photos.length > 0 || S.items.length > 0 || S.scanning || S.thinking || S.writing || !!S.notes);
 
 export function enter(root, params, app) {
   S = S && !params.reset ? S : fresh();
@@ -151,11 +155,20 @@ export function enter(root, params, app) {
         todo.forEach((p, i) => fd.append("images", p, `photo${i}.jpg`));
         const r = await postForm("/api/mise/pantry/scan", fd);
         todo.forEach((p) => st.scanned.add(p));
-        st.items = [...new Set([...r.items, ...st.items])];
+        // new finds first; never bring back something you removed; no duplicates (case-insensitive)
+        const seen = new Set();
+        st.items = [...r.items, ...st.items].filter((it) => {
+          const k = it.trim().toLowerCase();
+          if (!k || seen.has(k) || st.removed.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
         ok = true;
       } catch (e) { toast(e.message); }
       st.scanning = false; st.scanP = null;
       if (S === st) drawResults();
+      // photos taken while this scan ran get their own scan straight away
+      if (ok && S === st && st.photos.some((p) => !st.scanned.has(p))) return scan();
       return ok;
     })();
     return st.scanP;
@@ -163,15 +176,28 @@ export function enter(root, params, app) {
 
   // ---- find: finish reading every photo (including ones taken mid-scan), then ideas
   $("#find").onclick = async () => {
+    if (S.finding || S.writing) return; // one search at a time (double taps)
     if (!S.photos.length && !S.items.length) { toast("Take a photo of your fridge first, or add ingredients by hand."); drawResults(true); return; }
-    while (S.photos.some((p) => !S.scanned.has(p))) { if (!(await scan())) break; }
-    if (S.scanP) await S.scanP;
-    requestAnimationFrame(() => $("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    await ideas();
+    S.finding = true;
+    $("#find").disabled = true;
+    try {
+      while (S.photos.some((p) => !S.scanned.has(p))) { if (!(await scan())) break; }
+      if (S.scanP) await S.scanP;
+      requestAnimationFrame(() => $("#results")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      await ideas();
+    } finally {
+      S.finding = false;
+      if ($("#find")) $("#find").disabled = false;
+    }
   };
 
   async function ideas() {
-    if (!S.items.length) { drawResults(true); return; }
+    if (S.thinking || S.writing) return;
+    if (!S.items.length) {
+      toast("No ingredients yet. Add a few by hand, or take another photo.");
+      drawResults(true);
+      return;
+    }
     S.thinking = true; drawResults();
     try {
       const r = await postJSON("/api/mise/pantry/ideas", { items: S.items, minutes: S.minutes, servings: S.servings, notes: S.notes });
@@ -183,7 +209,7 @@ export function enter(root, params, app) {
   function drawResults(forceItems = false) {
     const el = $("#results");
     if (!el) return; // the scan finished after you left this page
-    if (S.scanning) { el.innerHTML = `<div class="card stack"><h2>Looking in your fridge…</h2><div class="progress"><i style="width:40%"></i></div><p class="muted">Gemma is reading the photos on this ${ON_PHONE ? "phone" : "laptop"}.</p></div>`; return; }
+    if (S.scanning) { el.innerHTML = `<div class="card stack"><h2>Looking in your fridge…</h2><div class="progress busy"><i></i></div><p class="muted">Gemma is reading the photos on this ${ON_PHONE ? "phone" : "laptop"}.</p></div>`; return; }
     if (!S.items.length && !forceItems && !S.ideas.length) {
       el.innerHTML = ""; // nothing yet: the four steps are the whole screen
       return;
@@ -192,13 +218,13 @@ export function enter(root, params, app) {
       <div class="card stack">
         <div class="row" style="justify-content:space-between"><h2>What you have</h2><span class="muted">${S.items.length} items</span></div>
         <p class="muted">Remove anything that's wrong and add what the photo missed. Salt, pepper and oil are assumed.</p>
-        <div class="items" id="items">${raw(S.items.map((it, i) => html`<span class="chip">${it}<button class="x" data-i="${i}" aria-label="Remove ${it}">×</button></span>`).join(""))}</div>
-        <form class="row" id="addForm"><input id="addItem" class="chip" style="flex:1;min-width:160px" placeholder="Add an ingredient" aria-label="Add an ingredient" /><button class="btn">Add</button></form>
-        <button class="btn" id="reIdeas" ${S.thinking ? "disabled" : ""}>Update ideas</button>
+        <div class="items" id="items">${raw(S.items.map((it, i) => html`<span class="chip">${it}<button class="x" data-i="${i}" aria-label="Remove ${it}" ${S.writing ? "disabled" : ""}>×</button></span>`).join(""))}</div>
+        <form class="row" id="addForm"><input id="addItem" class="chip" style="flex:1;min-width:160px" placeholder="Add an ingredient" aria-label="Add an ingredient" /><button class="btn" ${S.writing ? "disabled" : ""}>Add</button></form>
+        <button class="btn" id="reIdeas" ${S.thinking || S.writing ? "disabled" : ""}>Update ideas</button>
       </div>
       <div class="stack">
         <h2>${S.thinking ? "Thinking of dishes…" : S.ideas.length ? `Ideas for ${S.minutes} minutes` : ""}</h2>
-        ${raw(S.thinking ? `<div class="progress"><i style="width:60%"></i></div>` : "")}
+        ${raw(S.thinking ? `<div class="progress busy"><i></i></div>` : "")}
         <div class="ideas">${raw(S.ideas.map((d, i) => html`
           <article class="card idea">
             <div class="row" style="justify-content:space-between;align-items:baseline"><h3>${d.title}</h3><span class="time">${d.total_minutes} min</span></div>
@@ -206,43 +232,54 @@ export function enter(root, params, app) {
             ${raw(d.uses.length ? html`<p class="uses">Uses: ${d.uses.join(", ")}</p>` : "")}
             ${raw(d.missing.length ? html`<p class="missing">You'd need: ${d.missing.join(", ")}</p>` : "")}
             ${raw(d.over_time ? `<p class="missing">A little over your time limit.</p>` : "")}
-            <div class="row"><button class="btn primary" data-idea="${i}">Write this recipe</button></div>
-            <div class="progress" hidden><i></i></div>
+            <div class="row"><button class="btn primary" data-idea="${i}" ${S.writing ? "disabled" : ""}>${S.writing === i + 1 ? "Writing the recipe…" : "Write this recipe"}</button></div>
+            <div class="progress" ${S.writing === i + 1 ? "" : "hidden"}><i></i></div>
           </article>`).join(""))}</div>
       </div>`;
-    el.querySelectorAll("#items .x").forEach((b) => (b.onclick = () => { S.items.splice(+b.dataset.i, 1); drawResults(true); }));
+    el.querySelectorAll("#items .x").forEach((b) => (b.onclick = () => {
+      const [gone] = S.items.splice(+b.dataset.i, 1);
+      if (gone) S.removed.add(gone.trim().toLowerCase()); // a later scan won't bring it back
+      drawResults(true);
+    }));
     $("#addForm").onsubmit = (e) => {
       e.preventDefault();
       const v = $("#addItem").value.trim();
-      if (v) { S.items.push(v); drawResults(true); $("#addItem").focus(); }
+      if (!v || S.writing) return;
+      S.removed.delete(v.toLowerCase());
+      if (!S.items.some((x) => x.toLowerCase() === v.toLowerCase())) S.items.push(v);
+      drawResults(true);
+      $("#addItem").focus();
     };
     $("#reIdeas").onclick = ideas;
-    el.querySelectorAll("[data-idea]").forEach((b) => (b.onclick = () => write(+b.dataset.idea, b)));
+    el.querySelectorAll("[data-idea]").forEach((b) => (b.onclick = () => write(+b.dataset.idea)));
   }
 
-  async function write(i, btn) {
-    const card = btn.closest(".idea");
-    const bar = card.querySelector(".progress");
-    bar.hidden = false;
-    btn.disabled = true;
-    btn.textContent = "Writing the recipe…";
-    el_disable(true);
+  async function write(i) {
+    if (S.writing || S.thinking) return;
+    const st = S;
+    st.writing = i + 1; // which idea is being written (1-based, so 0 means none)
+    drawResults();
+    let pct = 0;
     try {
       const evs = await stream("/api/mise/pantry/recipe",
-        { json: { idea: S.ideas[i], items: S.items, minutes: S.minutes, servings: S.servings, notes: S.notes } },
-        (ev) => { if (ev.type === "progress") bar.firstElementChild.style.width = `${Math.min(95, ev.chars / 18)}%`; });
+        { json: { idea: st.ideas[i], items: st.items, minutes: st.minutes, servings: st.servings, notes: st.notes } },
+        (ev) => {
+          if (ev.type !== "progress") return;
+          pct = Math.min(95, ev.chars / 18);
+          const bar = S === st && document.querySelectorAll(".idea .progress i")[i];
+          if (bar) bar.style.width = `${pct}%`;
+        });
       const done = evs.find((e) => e.type === "done");
-      toast(`Saved “${done.recipe.title}” to your recipe book`);
-      S = fresh();
-      go("recipe", { id: done.recipe.id, fresh: true });
+      if (S === st) S = fresh();
+      // only jump to the recipe if you're still on this page; otherwise just say it's ready
+      if (app.view?.busy === busy) go("recipe", { id: done.recipe.id, fresh: true });
+      else toast(`“${done.recipe.title}” is ready in your recipe book`, 5000);
     } catch (e) {
       toast(e.message);
-      btn.disabled = false;
-      btn.textContent = "Write this recipe";
-      el_disable(false);
+      st.writing = false;
+      if (S === st) drawResults();
     }
   }
-  function el_disable(on) { root.querySelectorAll("[data-idea]").forEach((b) => (b.disabled = on || b.disabled)); }
 
   drawResults();
   if (params.scan) scan();

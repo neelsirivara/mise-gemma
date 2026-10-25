@@ -47,6 +47,16 @@ def skeleton(schema):
     return {"string": "<string>", "integer": 0, "number": 0, "boolean": False}.get(t, None)
 
 
+def trim(obj, schema):
+    """Cut arrays down to the schema's maxItems (a small model sometimes lists 6 ideas when asked for 3)."""
+    t = schema.get("type")
+    if t == "object" and isinstance(obj, dict):
+        return {k: trim(v, schema.get("properties", {}).get(k, {})) for k, v in obj.items()}
+    if t == "array" and isinstance(obj, list):
+        return [trim(x, schema.get("items", {})) for x in obj[: schema.get("maxItems", len(obj))]]
+    return obj
+
+
 def matches(obj, schema) -> bool:
     """Small JSON-schema check covering what our schemas use: type, required, properties, items, enum, min/max."""
     t = schema.get("type")
@@ -248,6 +258,8 @@ class LiteRTLLM:
             buf.append(t)
             yield {"chunk": t}
         obj = extract_json("".join(buf))
+        if obj is not None:
+            obj = trim(obj, schema)
         if obj is not None and matches(obj, schema):
             yield {"result": obj, "constrained": False}
             return

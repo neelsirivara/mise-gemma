@@ -1,5 +1,6 @@
 // Full-screen camera, opened from step 1 of the landing page. Snap the fridge or cupboard
 // (or pick from the gallery); Done goes back to the steps, which start reading the photos straight away.
+import { ON_PHONE } from "/lib/api.js";
 import { shrink, snapshot, startCamera, stopCamera } from "/lib/camera.js";
 import { $, html, mount, raw, toast } from "../ui.js";
 import { photos } from "./pantry.js";
@@ -46,7 +47,7 @@ export async function enter(root, _params, app) {
           <li>Turn the label side of jars and packets toward you.</li>
           <li>Good light helps. Up to ${MAX} photos.</li>
         </ul>
-        <p class="muted">Gemma reads the photos on this laptop. Nothing leaves the device.</p>
+        <p class="muted">Gemma reads the photos on this ${ON_PHONE ? "phone" : "laptop"}. Nothing leaves your devices.</p>
         <button class="btn primary" id="capTipsOk">Got it</button>
       </div>
 

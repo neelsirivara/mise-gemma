@@ -59,13 +59,20 @@ TRANSCRIBE = ("Transcribe exactly what the person says in this audio. Output onl
               "punctuation. If there is no speech, output nothing.")
 
 
+# what a small model says instead of a transcript when there's no speech: never treat that as the cook's words
+_NOT_SPEECH = re.compile(r"(cannot|can't|unable to) transcribe|^\W*(there is |there's )?no (speech|spoken words)"
+                         r"|(audio|recording) (is|was) (not provided|empty|silent)|please provide (the )?audio"
+                         r"|^\W*i'?m (a |an )?(speech )?transcriber|\[(silence|inaudible|no speech|noise|music)\]", re.I)
+
+
 def transcribe(audio: bytes) -> str:
     """Hearing is its own focused pass. Asking one call to transcribe AND classify biased what it 'heard'
     toward the intent list ("go back one step" came out as "what's next"): 11.9% word error rate vs 0%
     for this pass on the same noisy clips (scripts/asr_eval.py)."""
     out = "".join(e.get("text", "") for e in llm.talk().stream(
         "You are a precise speech transcriber.", [], TRANSCRIBE, None, audio, []) if e["type"] == "text")
-    return out.strip().strip('"').strip()
+    out = out.strip().strip('"').strip()
+    return "" if _NOT_SPEECH.search(out) else out
 
 
 def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterator[dict]:

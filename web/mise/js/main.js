@@ -24,18 +24,33 @@ export const app = {
   timers: [],
   listeners: new Set(), // views subscribe to hub events (cook state, timers)
 
-  go(name, params = {}) {
+  go(name, params = {}, { fromHistory = false } = {}) {
+    if (!VIEWS[name]) name = "pantry";
     this.view?.leave?.();
     this.params = params;
     this.view = VIEWS[name];
+    this.viewName = name;
     document.body.classList.toggle("cooking", name === "cook");
     document.body.classList.toggle("capturing", name === "capture");
-    $$(".nav button, .tabbar button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === name || (b.dataset.go === "pantry" && name === "capture") ? "page" : "false"));
-    root.innerHTML = "";
-    this.view.enter(root, params, this);
+    // the tab that owns this screen: the camera belongs to "what to cook", recipes and feedback to the book
+    const tab = { capture: "pantry", recipe: "home", feedback: "home" }[name] || name;
+    $$(".nav button, .tabbar button").forEach((b) => b.setAttribute("aria-current", b.dataset.go === tab ? "page" : "false"));
+    // each visit gets its own container: a view that's still loading when you move on mounts into a
+    // detached one, so it can never draw over the screen you went to
+    const host = document.createElement("div");
+    host.className = "view";
+    root.replaceChildren(host);
+    this.view.enter(host, params, this);
     root.focus({ preventScroll: true });
     scrollTo(0, 0);
     try { sessionStorage.setItem("mise:view", JSON.stringify({ name, params })); } catch {}
+    // the phone's back gesture / button walks back through screens instead of leaving the app
+    try {
+      const entry = { mise: true, name, params };
+      if (fromHistory) {} // already there
+      else if (history.state?.mise) history.pushState(entry, "");
+      else history.replaceState(entry, "");
+    } catch {}
   },
 
   on(fn) { this.listeners.add(fn); return () => this.listeners.delete(fn); },
@@ -146,6 +161,8 @@ $("#hubDialog").addEventListener("close", () => {
 
 // ---------------------------------------------------------------- boot
 $$(".nav button, .tabbar button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
+addEventListener("popstate", (e) => { if (e.state?.mise) app.go(e.state.name, e.state.params, { fromHistory: true }); });
+addEventListener("mise:need-model", () => { if (app.viewName !== "phone") app.go("phone", { then: app.viewName || "pantry", thenParams: app.params }); });
 $("#homeBtn").onclick = () => app.go("pantry");
 if ("serviceWorker" in navigator && isSecureContext) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
@@ -238,7 +255,8 @@ async function resume() {
   try { last = JSON.parse(sessionStorage.getItem("mise:view")); } catch {}
   const cs = await getJSON("/api/mise/cook/state").catch(() => ({}));
   if (cs.active) app.go("cook");
-  else if (cs.awaiting_feedback) app.go("feedback", { id: cs.awaiting_feedback });
+  // the "how did it go?" screen comes back only if that's where you were (the tab bar lets you skip it)
+  else if (cs.awaiting_feedback && ["cook", "feedback"].includes(last?.name)) app.go("feedback", { id: cs.awaiting_feedback });
   else if (last && VIEWS[last.name] && last.name !== "cook") app.go(last.name, last.params);
   else app.go("pantry"); // first screen: the four steps, camera live in step 1
 }
@@ -254,9 +272,12 @@ const stamp = async () => (await Promise.all(CODE.map((p) => fetch(p, { method: 
   .then((r) => r.headers.get("etag") || r.headers.get("last-modified") || "").catch(() => "")))).join("|");
 let codeStamp = null;
 stamp().then((s) => (codeStamp = s));
+// only where nothing would be lost: the book, a recipe page, or an untouched "what to cook" page
+const safeToReload = () => !app.busy && (["home", "recipe"].includes(app.viewName) || (app.viewName === "pantry" && !pantry.busy()));
 document.addEventListener("visibilitychange", async () => {
-  if (document.visibilityState !== "visible" || !codeStamp || app.view === VIEWS.cook || app.busy) return;
+  if (document.visibilityState !== "visible" || !codeStamp || !safeToReload()) return;
   const now = await stamp();
-  if (now && now !== codeStamp && !now.includes("||")) location.reload();
+  if (now.split("|").some((x) => !x)) return; // a check failed (offline?): unknown, not "changed"
+  if (now !== codeStamp && safeToReload()) location.reload();
 });
 export { url };

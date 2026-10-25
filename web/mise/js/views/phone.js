@@ -62,9 +62,11 @@ export async function enter(root, params, app) {
     $("#pState").textContent = st.loading ? "Starting Gemma on this phone…" : st.downloading ? "Downloading…"
       : st.ready ? "Ready" : st.cached ? "Downloaded" : st.progress > 0 ? "Paused" : "";
     $("#pError").hidden = !st.error;
-    $("#pError").textContent = st.error || "";
+    $("#pError").textContent = st.error ? friendly(st.error) : "";
     $("#go").disabled = busy;
-    $("#go").textContent = st.ready ? "Start cooking" : st.cached ? "Start Gemma" : st.progress > 0 ? "Resume download" : "Download Gemma (2 GB)";
+    $("#go").textContent = st.loading ? "Starting Gemma…" : st.downloading ? "Downloading…" : st.ready ? "Start cooking"
+      : st.cached ? "Start Gemma" : st.progress > 0 ? "Resume download" : "Download Gemma (2 GB)";
+    if (!st.downloading) $("#pSource").textContent = "";
   };
   off = llm.onStatus(draw);
   draw(await llm.status());
@@ -74,7 +76,7 @@ export async function enter(root, params, app) {
     try {
       const src = llm.kind === "web" ? await laptopSource() : null;
       $("#pSource").textContent = llm.kind === "native" ? "" : src ? "Copying from your laptop over Wi-Fi." : "Downloading from Hugging Face.";
-      await llm.load(src ? [src, MODEL.url] : [MODEL.url]);
+      await llm.load(src ? [src, MODEL.url] : [MODEL.url], { download: true });
       draw(llm.st);
       app.go(params.then || "pantry", params.thenParams || {});
     } catch {
@@ -87,6 +89,17 @@ export async function enter(root, params, app) {
   // already downloaded (or the iOS app has the model): just start it
   if (llm.st.ready) app.go(params.then || "pantry", params.thenParams || {});
   else if (llm.st.cached || llm.kind === "native") start();
+}
+
+// what went wrong, in words a cook would use
+function friendly(err) {
+  if (/fetch|network|reach|load failed|dynamically imported/i.test(err)) {
+    return "Couldn't download right now. Check the Wi-Fi or mobile data and tap the button to try again. The download picks up where it stopped.";
+  }
+  if (/memory|webgpu|gpu|adapter/i.test(err)) {
+    return "This phone's browser couldn't start Gemma (not enough graphics memory). Use your laptop, or the Mise iPhone app.";
+  }
+  return err;
 }
 
 export function leave() {

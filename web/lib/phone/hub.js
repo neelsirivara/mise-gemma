@@ -9,11 +9,12 @@ import { phoneLLM } from "./llm.js";
 
 const llm = phoneLLM();
 COOK.makeTips = (r) => chef.stepTips(llm, r);
+COOK.restore(); // a reload mid-cook picks up where you were
 let seeded = null;
 const stats = { turns: 0 };
 
 const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
-const fail = (e) => json({ detail: e.message || String(e) }, e.status || 500);
+const fail = (e) => json({ detail: e.message || String(e), need_model: !!e.needModel }, e.status || 500);
 
 // NDJSON stream from an async generator; a failure becomes an {"type":"error"} line, as on the laptop.
 function ndjson(gen) {

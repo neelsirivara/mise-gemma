@@ -64,8 +64,9 @@ export class HubError extends Error {}
 
 async function check(res) {
   if (res.ok) return res;
-  let msg = `${res.status} ${res.statusText}`;
-  try { msg = (await res.json()).detail || msg; } catch {}
+  let msg = `${res.status} ${res.statusText}`, body = {};
+  try { body = await res.json(); msg = body.detail || msg; } catch {}
+  if (body.need_model) dispatchEvent(new CustomEvent("mise:need-model")); // on-phone mode: show the download screen
   throw new HubError(msg);
 }
 

@@ -84,6 +84,7 @@ export function mountMum(el, speaker, { id = savedMum(), height = 300 } = {}) {
       this.hop();
     },
     hop() { el.classList.remove("hop"); void el.offsetWidth; el.classList.add("hop"); },
+    resize(h) { if (Math.abs(h - height) < 2) return; height = h; build(); },
     destroy() { alive = false; clearTimeout(blinkT); clearTimeout(mouthT); el.replaceChildren(); },
   };
 }

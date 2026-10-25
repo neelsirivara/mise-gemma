@@ -42,9 +42,13 @@ export function dur(sec) {
   return `${m} minute${m !== 1 ? "s" : ""}` + (s && m < 5 ? ` ${s} seconds` : "");
 }
 
+// what a small model says instead of a transcript when there's no speech (apps/mise/companion.py has the same list)
+const NOT_SPEECH = /(cannot|can't|unable to) transcribe|^\W*(there is |there's )?no (speech|spoken words)|(audio|recording) (is|was) (not provided|empty|silent)|please provide (the )?audio|^\W*i'?m (a |an )?(speech )?transcriber|\[(silence|inaudible|no speech|noise|music)\]/i;
+
 export async function transcribe(llm, audio) {
-  const out = await llm.generate({ system: "You are a precise speech transcriber.", parts: [{ audio }, { text: TRANSCRIBE }], maxTokens: 120 });
-  return out.trim().replace(/^"|"$/g, "").trim();
+  const out = (await llm.generate({ system: "You are a precise speech transcriber.", parts: [{ audio }, { text: TRANSCRIBE }], maxTokens: 120 }))
+    .trim().replace(/^"|"$/g, "").trim();
+  return NOT_SPEECH.test(out) ? "" : out;
 }
 
 const FOLLOW = /\b(it|that|this|them|those|one|how much|how many|what heat|how long|instead)\b/i;

@@ -65,18 +65,24 @@ export async function enter(root, params, app) {
     <div class="row"><button class="btn ghost danger" id="del">Delete recipe</button></div>`);
 
   $("#back").onclick = () => app.go("home");
-  $("#cook").onclick = async () => {
+  $("#cook").onclick = async (e) => {
+    if (e.currentTarget.disabled) return;
+    e.currentTarget.disabled = true; // a double tap would start (and narrate) it twice
     // unlock mic + speaker inside the tap (iOS requires a gesture) so cook mode can listen and talk at once
     app.speaker.unlock();
     app.mic.init().catch(() => {});
-    try { await postJSON("/api/mise/cook/start", { id: r.id }); app.go("cook"); } catch (e) { toast(e.message); }
+    try { await postJSON("/api/mise/cook/start", { id: r.id }); app.go("cook"); }
+    catch (err) { toast(err.message); if ($("#cook")) $("#cook").disabled = false; }
   };
   let armed = false;
   $("#del").onclick = async (e) => {
     if (!armed) { armed = true; e.target.textContent = "Tap again to delete"; setTimeout(() => { armed = false; e.target.textContent = "Delete recipe"; }, 3000); return; }
-    await del(`/api/mise/book/${r.id}`);
-    toast(`Deleted “${r.title}”`);
-    app.go("home");
+    e.target.disabled = true;
+    try {
+      await del(`/api/mise/book/${r.id}`);
+      toast(`Deleted “${r.title}”`);
+      app.go("home");
+    } catch (err) { toast(err.message); e.target.disabled = false; }
   };
 }
 

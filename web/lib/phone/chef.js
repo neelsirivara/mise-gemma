@@ -29,6 +29,7 @@ const TIPS = { type: "object", properties: { tips: { type: "array", maxItems: 6,
   properties: { step: { type: "integer" }, tip: { type: "string", minLength: 8 } }, required: ["step", "tip"] } } }, required: ["tips"] };
 
 export async function scanPantry(llm, images) {
+  if (!llm.st.ready) await llm.load();
   if (!llm.st.vision) {
     throw Object.assign(new Error("Gemma on this phone reads text only, so it can't see photos. Type or say your ingredients instead."),
       { status: 422 });

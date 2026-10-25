@@ -21,6 +21,26 @@ from .cook import COOK
 router = APIRouter()
 
 
+def _detached(gen):
+    """Run a generator to completion in a background thread and stream its events from a queue. A phone that
+    locks or leaves mid-stream (20-40 s recipe rewrites) no longer cancels the work: it finishes and is saved."""
+    import queue
+
+    q: queue.Queue = queue.Queue()
+
+    def run():
+        try:
+            for ev in gen:
+                q.put(ev)
+        except Exception as e:
+            q.put({"type": "error", "error": f"{type(e).__name__}: {e}"})
+        q.put(None)
+
+    threading.Thread(target=run, daemon=True).start()
+    while (ev := q.get()) is not None:
+        yield ev
+
+
 def _ndjson(gen):
     def run():
         try:
@@ -89,7 +109,7 @@ class RecipeIn(IdeasIn):
 
 @router.post("/pantry/recipe")
 def pantry_recipe(body: RecipeIn):
-    def gen():
+    def gen():  # detached below: the recipe is saved to the book even if the phone leaves mid-write
         for ev in chef.write_recipe(body.idea, body.items, body.minutes, body.servings, body.notes):
             if ev["type"] == "recipe":
                 r = book.add(ev["recipe"], source="pantry", pantry=body.items)
@@ -97,7 +117,7 @@ def pantry_recipe(body: RecipeIn):
                        "over_time": r["total_minutes"] > body.minutes}
             else:
                 yield ev
-    return _ndjson(gen())
+    return _ndjson(_detached(gen()))
 
 
 # ---------------------------------------------------------------- cook mode
@@ -172,7 +192,7 @@ async def feedback(id: str = Form(...), rating: int = Form(0), tags: str = Form(
     _get(id)
     aud = await audio.read() if audio else None
     tag_list = [t.strip() for t in tags.split(",") if t.strip()]
-    return _ndjson(revise_stream(id, rating or None, tag_list, notes.strip(), aud, improve))
+    return _ndjson(_detached(revise_stream(id, rating or None, tag_list, notes.strip(), aud, improve)))
 
 
 def revise_in_background(rid: str, rating: int | None, notes: str):

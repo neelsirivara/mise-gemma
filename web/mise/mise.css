@@ -568,3 +568,38 @@ body.cooking .tabbar, body.capturing .tabbar { display: none; }
 .small { font-size: 14px; }
 .engine-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .engine-pick .btn[aria-pressed="true"] { border-color: var(--rim); box-shadow: inset 0 0 0 1.5px var(--rim); }
+
+/* ---------------------------------------------------------------- polish from the iPhone walkthroughs */
+.view { display: contents; } /* each screen's container (main.js) takes no space of its own */
+#results { scroll-margin-top: calc(76px + env(safe-area-inset-top, 0px)); }
+/* indeterminate progress while Gemma reads or thinks */
+.progress.busy > i { width: 35%; animation: progress-slide 1.4s ease-in-out infinite; }
+@keyframes progress-slide { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
+/* bigger tap targets (about 44px) without changing how they look */
+.chip .x { position: relative; min-width: 24px; min-height: 24px; }
+.chip .x::after { content: ""; position: absolute; inset: -10px -8px; }
+.hub-dot { width: 44px; height: 44px; }
+/* cook bar: above the step scene, words on one line */
+.cook-bar { z-index: 5; }
+.cook-bar .btn { white-space: nowrap; }
+body.camfull .cook-bar { background: rgb(255 253 247 / 82%); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-top: 0; }
+/* short screens (landscape, small phones): Mum stays, her bubble goes (it's spoken anyway) */
+@media (max-height: 560px) { .mum-say { display: none; } }
+@media (max-width: 360px) {
+  .cook-bar { gap: 6px; }
+  .cook-bar .btn { padding: 8px 10px; font-size: 15px; }
+  .mic { width: 70px; height: 70px; }
+}
+/* WebKit sizes an implicit grid column to its widest child: keep cook mode to the screen width */
+.cook { grid-template-columns: minmax(0, 1fr); }
+.cook > * { min-width: 0; }
+.cook-bar { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); }
+@media (max-width: 400px) {
+  .cook-bar { gap: 8px; }
+  .cook-bar .left { gap: 4px; }
+  .cook-bar .btn { padding: 8px 10px; font-size: 15px; min-height: 44px; }
+  .cook-bar .btn.big { padding: 10px 14px; font-size: 17px; }
+  .mic { width: 72px; height: 72px; }
+}
+@media (max-width: 340px) { .cook-bar .btn { padding: 6px 8px; font-size: 14px; } .mic { width: 64px; height: 64px; } }
+@media (max-width: 400px) { .wide-only { display: none; } .cook-bar #backBtn { min-width: 44px; } }

@@ -8,6 +8,7 @@ const TAGS = ["Perfect", "Too salty", "Too bland", "Too spicy", "Needs more heat
 
 export async function enter(root, params, app) {
   const r = await getJSON(`/api/mise/book/${params.id}`).catch(() => null);
+  if (!root.isConnected) return; // you moved on while it loaded
   if (!r) return app.go("home");
   const cook = r.cooks.filter((c) => c.version === r.version).at(-1);
   const F = { rating: 0, tags: new Set(), voice: null };
@@ -92,12 +93,20 @@ export async function enter(root, params, app) {
       state(`Voice note ${s.toFixed(1)}s saved (couldn't write it down)`);
     }
   };
+  mic.onSilence = (s) => state(s <= 0.4 ? "Hold the button while you talk." : "I didn't catch anything. Hold the button and speak up a little.");
   const vb = $("#voiceBtn");
-  vb.addEventListener("pointerdown", (e) => { e.preventDefault(); vb.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt"); });
+  vb.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    vb.setPointerCapture?.(e.pointerId);
+    app.speaker.stop();
+    mic.start("ptt").catch(() => state("The microphone isn't available. Allow it for this site, or type instead."));
+  });
   ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => vb.addEventListener(ev, () => mic.stop(true)));
   vb.addEventListener("contextmenu", (e) => e.preventDefault());
 
+  let sending = false;
   async function submit(improve) {
+    if (sending) return;
     const notes = $("#notes").value.trim();
     if (!F.rating && !F.tags.size && !notes && !F.voice) { toast("Add a rating, a quick note, or a few words first."); return; }
     const fd = new FormData();
@@ -107,8 +116,10 @@ export async function enter(root, params, app) {
     fd.append("notes", notes);
     fd.append("improve", improve);
     if (F.voice) fd.append("audio", F.voice, "note.wav");
+    sending = true;
     const res = $("#result");
     res.hidden = false;
+    requestAnimationFrame(() => res.scrollIntoView({ behavior: "smooth", block: "center" })); // it's below the fold on a phone
     res.innerHTML = improve ? `<h2>Improving the recipe…</h2><div class="progress"><i></i></div><p class="muted">Gemma is rewriting it on this ${ON_PHONE ? "phone" : "laptop"}.</p>` : `<p>Saving…</p>`;
     $("#improve").disabled = $("#justSave").disabled = true;
     try {
@@ -126,11 +137,14 @@ export async function enter(root, params, app) {
           : html`<h2>Notes saved</h2><p class="muted">The recipe stays as it is.</p>`)}
         <div class="row"><button class="btn primary" id="view">View recipe</button><button class="btn ghost" id="book">Recipe book</button></div>`;
       if (improve) app.speaker.say(`Saved version ${nr.version}. ${done.changes[0] || ""}`);
+      if ($(".fb .label")) $(".fb .label").textContent = `${nr.title} · version ${nr.version}`;
+      requestAnimationFrame(() => res.scrollIntoView({ behavior: "smooth", block: "start" }));
       $("#view").onclick = () => app.go("recipe", { id: nr.id });
       $("#book").onclick = () => app.go("home");
     } catch (e) {
       res.innerHTML = html`<p class="error">${e.message}</p>`;
       $("#improve").disabled = $("#justSave").disabled = false;
+      sending = false;
     }
   }
   $("#improve").onclick = () => submit(true);

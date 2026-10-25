@@ -48,7 +48,7 @@ export async function enter(root, _params, app) {
       </div>
       <div class="cook-bar">
         <div class="left">
-          <button class="btn" id="backBtn" aria-label="Previous step">← Back</button>
+          <button class="btn" id="backBtn" aria-label="Previous step">←<span class="wide-only"> Back</span></button>
           <button class="btn" id="repeatBtn">Repeat</button>
         </div>
         <div class="mic-wrap">
@@ -59,26 +59,42 @@ export async function enter(root, _params, app) {
       </div>
     </section>`);
 
-  // ---- mum: always a little alive; her mouth follows the voice; pick yours (remembered)
-  mum = mountMum($("#mum"), app.speaker, { id: savedMum(), height: matchMedia("(max-width: 820px)").matches ? 190 : 290 });
+  // ---- mum: always a little alive; her mouth follows the voice; pick yours (remembered).
+  // Sized from the screen: smaller on short phones and in landscape, re-sized when the phone rotates.
+  const mumHeight = () => Math.round(Math.max(96, Math.min(innerWidth <= 820 ? 180 : 290, innerHeight * (innerWidth > innerHeight ? 0.34 : 0.2))));
+  mum = mountMum($("#mum"), app.speaker, { id: savedMum(), height: mumHeight() });
+  const onResize = () => mum?.resize(mumHeight());
+  addEventListener("resize", onResize);
   $("#mumPick").value = mum.id;
   $("#mumPick").onchange = (e) => { mum.set(e.target.value); app.speaker.say(`Hi, ${mum.hello()}! I'm here. Let's cook.`, { interrupt: true }); };
   shown = -1;
 
-  const act = async (a) => { try { st = await postJSON(`/api/mise/cook/${a}`); draw(); } catch (e) { toast(e.message); } };
+  // one step change at a time: a double tap on Next used to skip a step (and start its timer)
+  let acting = false;
+  const act = async (a) => {
+    if (acting) return;
+    acting = true;
+    try { st = await postJSON(`/api/mise/cook/${a}`); draw(); } catch (e) { toast(e.message); }
+    finally { setTimeout(() => (acting = false), 350); }
+  };
   $("#nextBtn").onclick = () => (st && st.step >= st.recipe.steps.length - 1 ? finish() : act("next"));
   $("#backBtn").onclick = () => act("back");
   $("#repeatBtn").onclick = () => act("repeat");
   let armed = false;
   $("#exit").onclick = async (e) => {
     if (!armed) { armed = true; toast("Tap ✕ again to stop cooking"); setTimeout(() => (armed = false), 3000); return; }
-    await postJSON("/api/mise/cook/stop");
     app.speaker.stop();
+    try { await postJSON("/api/mise/cook/stop"); } catch {}
     app.go("recipe", { id: st?.recipe?.id });
   };
+  let finishing = false;
   async function finish() {
-    st = await postJSON("/api/mise/cook/finish");
-    app.go("feedback", { id: st.awaiting_feedback });
+    if (finishing) return;
+    finishing = true;
+    try {
+      st = await postJSON("/api/mise/cook/finish");
+      app.go("feedback", { id: st.awaiting_feedback });
+    } catch (e) { toast(e.message); finishing = false; }
   }
 
   // ---- voice companion
@@ -90,14 +106,18 @@ export async function enter(root, _params, app) {
     $("#mic")?.classList.toggle("rec", !!mode);
     if ($("#micHint")) $("#micHint").textContent = mode ? "Listening…" : app.busy ? "Thinking…" : mic.handsFree ? "Listening for you" : "Hold to talk";
   };
+  mic.onSilence = () => {};
   mic.onUtterance = async (blob, seconds) => {
     const frame = $("#useCam").checked ? await snapshot($("#cookCam"), 768) : null;
-    const reply = await app.ask({ audio: blob, frame }, (t) => log(`→ ${t.name.replace("_", " ")}`, "tool"),
-      undefined, (h) => log(`You: “${h.text}”`, "me"));
-    if (reply) log(reply);
+    const reply = await app.ask({ audio: blob, frame }, () => {}, undefined, (h) => { if (h.text) log(`You: “${h.text}”`, "me"); });
+    if (reply) {
+      log(reply);
+      if ($("#said")) $("#said").textContent = reply; // Mum says the answer, not just the step
+    }
   };
   const micBtn = $("#mic");
-  micBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); micBtn.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt"); });
+  const micFailed = () => toast("The microphone isn't available. Allow it for this site, or tap Next and Repeat.", 5000);
+  micBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); micBtn.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt").catch(micFailed); });
   // also when the mic is still starting (first tap: permission prompt), so a quick tap can't leave it recording
   ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => micBtn.addEventListener(ev, () => (mic.mode === "ptt" || mic.starting) && mic.stop(true)));
   micBtn.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -140,8 +160,8 @@ export async function enter(root, _params, app) {
   $("#speak").checked = app.speaker.enabled;
 
   const keys = (e) => {
-    if (e.target.closest("input, textarea")) return;
-    if (e.code === "Space" && !e.repeat) { e.preventDefault(); app.speaker.stop(); mic.start("ptt"); }
+    if (e.target.closest("input, textarea, select")) return;
+    if (e.code === "Space" && !e.repeat) { e.preventDefault(); app.speaker.stop(); mic.start("ptt").catch(micFailed); }
     if (e.code === "ArrowRight") $("#nextBtn").click();
     if (e.code === "ArrowLeft") act("back");
     if (e.key === "r") act("repeat");
@@ -162,7 +182,7 @@ export async function enter(root, _params, app) {
       if (ev.kind === "tick") drawTimers(ev.timers);
       if (ev.kind === "busy") mic.onState(mic.mode);
     }),
-    () => { removeEventListener("keydown", keys); removeEventListener("keyup", keyup); clearInterval(watchT); mic.handsFree = false; },
+    () => { removeEventListener("keydown", keys); removeEventListener("keyup", keyup); removeEventListener("resize", onResize); clearInterval(watchT); mic.handsFree = false; },
   ];
 
   function log(text, cls = "") {
@@ -173,6 +193,7 @@ export async function enter(root, _params, app) {
   }
 
   st = await getJSON("/api/mise/cook/state");
+  if (!root.isConnected) return; // you moved on while it loaded
   if (!st.recipe) return app.go("home");
   if (!st.active && st.awaiting_feedback) return app.go("feedback", { id: st.awaiting_feedback });
   draw();

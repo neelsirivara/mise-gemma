@@ -169,10 +169,15 @@ class WebLLM {
     }).getReader();
   }
 
-  async load(sources) {
+  // Loads the downloaded model. Downloads it only when asked to (the setup screen); anything else that needs
+  // Gemma before it's on the phone gets a clear "download it first" error instead of a silent 2 GB download.
+  async load(sources, { download = false } = {}) {
     if (this.#llm) return this.st;
     await this.status();
-    if (!this.st.cached) await this.download(sources);
+    if (!this.st.cached) {
+      if (!download) throw Object.assign(new Error("Gemma isn't on this phone yet. Download it first."), { status: 409, needModel: true });
+      await this.download(sources);
+    }
     this.#set({ loading: true, error: null });
     try {
       const { FilesetResolver, LlmInference } = await import(`${GENAI}/genai_bundle.mjs`);

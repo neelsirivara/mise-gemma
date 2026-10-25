@@ -57,7 +57,27 @@ export const COOK = {
   recipe: null, step: 0, startedAt: 0, stepStartedAt: 0, stepSeconds: [], cues: new Set(), stepTimers: {},
   active: false, awaitingFeedback: null, lastSaid: "", makeTips: null, // makeTips(recipe) → Promise<tips>, set by the hub
 
-  say(text, tone = "narration") { this.lastSaid = text; SESSION.emit("say", { text, tone }); },
+  say(text, tone = "narration") { this.lastSaid = text; SESSION.emit("say", { text, tone }); this.save(); },
+
+  // kept in localStorage, so reloading the page (or iOS dropping it in the background) doesn't end the cook
+  save() {
+    try {
+      if (!this.recipe && !this.awaitingFeedback) return localStorage.removeItem("mise:cook");
+      localStorage.setItem("mise:cook", JSON.stringify({ recipe: this.recipe, step: this.step, startedAt: this.startedAt,
+        stepStartedAt: this.stepStartedAt, stepSeconds: this.stepSeconds, cues: [...this.cues], stepTimers: this.stepTimers,
+        active: this.active, awaitingFeedback: this.awaitingFeedback, lastSaid: this.lastSaid, timers: SESSION.timers }));
+    } catch {}
+  },
+  restore() {
+    try {
+      const s = JSON.parse(localStorage.getItem("mise:cook") || "null");
+      if (!s) return;
+      Object.assign(this, { recipe: s.recipe, step: s.step, startedAt: s.startedAt, stepStartedAt: s.stepStartedAt,
+        stepSeconds: s.stepSeconds, cues: new Set(s.cues), stepTimers: s.stepTimers, active: s.active,
+        awaitingFeedback: s.awaitingFeedback, lastSaid: s.lastSaid });
+      SESSION.timers = s.timers || [];
+    } catch {}
+  },
 
   stepLine(i) {
     const r = this.recipe, s = r.steps[i], n = r.steps.length;
@@ -149,7 +169,7 @@ export const COOK = {
     SESSION.emit("cook", { step: this.step, finished: true });
     return this.state();
   },
-  stop() { this.active = false; this.recipe = null; SESSION.timers = []; },
+  stop() { this.active = false; this.recipe = null; SESSION.timers = []; this.save(); },
 
   tick() { // time cues, ~1/s
     if (!this.active) return;

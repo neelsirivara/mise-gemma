@@ -17,6 +17,7 @@ export class Mic {
     this.isSpeaking = () => false; // while true, hands-free needs a louder voice (barge-in)
     this.onBargeIn = () => {}; // called when the cook talks over the app
     this.onUtterance = () => {};
+    this.onSilence = () => {}; // the button was held but nothing loud enough was said
     this.onLevel = () => {};
     this.onState = () => {};
     this.recognizer = null; // set when Gemma can't take audio (on-phone browser build): see Recognizer below
@@ -66,9 +67,12 @@ export class Mic {
     this.chunks = [];
     const heard = this.heard;
     this.heard = null;
-    this.#wav(chunks).then(async ({ blob, seconds }) => {
+    this.#wav(chunks).then(async ({ blob, seconds, peak }) => {
       if (heard) blob.transcript = await heard.done(); // the words, for an engine that can't hear
-      if (send && seconds > 0.4) this.onUtterance(blob, seconds);
+      if (!send) return;
+      // too short or too quiet: don't send room noise to Gemma (it would "transcribe" something anyway)
+      if (seconds <= 0.4 || (peak < 0.02 && !blob.transcript)) return this.onSilence(seconds);
+      this.onUtterance(blob, seconds);
     });
   }
 
@@ -146,7 +150,7 @@ export class Mic {
     dv.setUint32(24, 16000, true); dv.setUint32(28, 32000, true); dv.setUint16(32, 2, true);
     dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 2, true);
     new Int16Array(wbuf, 44).set(out);
-    return { blob: new Blob([wbuf], { type: "audio/wav" }), seconds: n / 16000 };
+    return { blob: new Blob([wbuf], { type: "audio/wav" }), seconds: n / 16000, peak };
   }
 
 }
