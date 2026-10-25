@@ -1,4 +1,4 @@
-# Launch a scaffold.   .\run.ps1 mise | bench | sight   [-Engine litert|ollama] [-Dual] [-Port 8000]
+# Start Mise from a terminal.   .\run.ps1 [mise] [-Engine litert|ollama] [-Dual] [-Phone] [-Port 8000]
 #   -Dual  : run the always-on watcher on a second model (Gemma 4 E2B on CPU; -WatchBackend npu for the Intel NPU)
 #   -Phone : serve HTTPS to the local network for an iPhone (setup page with QR on port 8080, app on 8443)
 param(

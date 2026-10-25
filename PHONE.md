@@ -134,7 +134,7 @@ The terminal prints the pairing QR code and addresses, and the Hub page works as
 | The QR code has the wrong IP address | The laptop is on several networks (VPN, Tailscale…). Turn the others off, or type the address on the same network as the phone. |
 
 ## Verified (Oct 24, automated)
-`scripts/ui_test.py` ran these with real Chrome, a fake camera, a fake mic and the real models, all passing:
+`scripts/mise_ui_test.py` and `scripts/phone_mode_test.py` ran these in real Chrome, all passing:
 - the iPhone 15 Pro layout (no sideways scrolling, a thumb-sized mic, tap-and-hold talk)
 - the manifest
 - the service worker over HTTPS

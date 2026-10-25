@@ -4,7 +4,7 @@
 param([int]$Interval = 45, [string]$Scope = "neelsirivaras-projects")
 $ErrorActionPreference = "Continue"
 $env:Path = [System.Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [System.Environment]::GetEnvironmentVariable('Path','User')
-$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$root = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 $wt = Join-Path $root ".deploy-worktree"
 Set-Location $root
 git fetch -q origin

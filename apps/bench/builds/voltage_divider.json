@@ -1,9 +1,0 @@
-{
-  "title": "Voltage divider (5V to 3.3V logic)",
-  "steps": [
-    {"text": "Pick R1 = 1k and R2 = 2k (or 2.2k). Ask me to check the output voltage.", "check": "two resistors on bench"},
-    {"text": "Place R1 from the 5V signal row to a middle row.", "check": "R1 placed"},
-    {"text": "Place R2 from the middle row to ground.", "check": "R2 placed to ground rail"},
-    {"text": "Take the 3.3V output from the middle row and measure it with a multimeter.", "check": "multimeter probes on middle row"}
-  ]
-}

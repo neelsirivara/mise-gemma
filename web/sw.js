@@ -5,7 +5,7 @@
 const CACHE = "mise-shell-v2";
 const RUNTIME = "mise-runtime-v1";
 const CDN = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@";
-const SHELL = ["./", "app.js", "style.css", "manifest.webmanifest", "icons/icon-192.png", "icons/apple-touch-icon.png"];
+const SHELL = ["mise/index.html", "mise/mise.css", "mise/manifest.webmanifest", "icons/icon-192.png", "icons/apple-touch-icon.png"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

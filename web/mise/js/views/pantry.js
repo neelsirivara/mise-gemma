@@ -1,6 +1,6 @@
 // Landing page and "what can I cook?": all four steps on one screen (fridge photo, time, people,
 // anything to add) → ingredients → ideas → full recipe.
-import { postForm, postJSON, stream } from "/lib/api.js";
+import { ON_PHONE, postForm, postJSON, stream } from "/lib/api.js";
 import { shrink, snapshot, startCamera, stopCamera } from "/lib/camera.js";
 import { $, html, mount, raw, toast } from "../ui.js";
 
@@ -182,7 +182,7 @@ export function enter(root, params, app) {
   function drawResults(forceItems = false) {
     const el = $("#results");
     if (!el) return; // the scan finished after you left this page
-    if (S.scanning) { el.innerHTML = `<div class="card stack"><h2>Looking in your fridge…</h2><div class="progress"><i style="width:40%"></i></div><p class="muted">Gemma is reading the photos on this laptop.</p></div>`; return; }
+    if (S.scanning) { el.innerHTML = `<div class="card stack"><h2>Looking in your fridge…</h2><div class="progress"><i style="width:40%"></i></div><p class="muted">Gemma is reading the photos on this ${ON_PHONE ? "phone" : "laptop"}.</p></div>`; return; }
     if (!S.items.length && !forceItems && !S.ideas.length) {
       el.innerHTML = ""; // nothing yet: the four steps are the whole screen
       return;

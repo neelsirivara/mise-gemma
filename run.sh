@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Launch a scaffold on macOS / Linux (Windows: run.cmd).
+# Start Mise from a terminal on macOS / Linux (Windows: run.cmd).
 #   ./run.sh                      # Mise
 #   ./run.sh mise --dual          # + a second model on the CPU as the always-on watcher
 #   ./run.sh mise --dual --phone  # HTTPS on the local network for an iPhone (setup QR on :8080, app on :8443)
-#   ./run.sh bench | sight        # the other scaffolds
 #   ./run.sh mise --engine ollama # fallback engine
 #   ./run.sh mise --port 9000
 set -euo pipefail

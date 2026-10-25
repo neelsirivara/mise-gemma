@@ -23,11 +23,11 @@ class App:
     quick_prompts: list[str] = field(default_factory=list)  # demo-safe one-tap prompts
     accent: str = "#e8743b"
     watch_interval_s: float = 6.0
-    speak_watch: bool = False  # Sight speaks every scene change; others only speak alerts
+    speak_watch: bool = False  # speak every watcher scene change, not just alerts
     attach_frame: bool = True  # send the current camera frame with each chat turn
     # optional extensions for a full product app (see apps/mise)
     router: Any = None  # fastapi.APIRouter mounted at /api/<id>
-    web_entry: str = "index.html"  # page served at "/", relative to web/
+    web_entry: str = "mise/index.html"  # page served at "/", relative to web/
     tick: Callable[[], None] = lambda: None  # called ~1/s from the UI poll (time-based cues)
     history_scope: Callable[[], str] = lambda: ""  # history resets when this changes (e.g. cooking a new recipe)
     # optional custom conversation handler: (text, image, audio) -> event iterator, or None to use tool chat

@@ -8,7 +8,7 @@ MODELS_DIR = Path(os.environ.get("GEMMA_MODELS_DIR", ROOT / "models"))
 WEB_DIR = ROOT / "web"
 CACHE_DIR = Path(os.environ.get("GEMMA_CACHE_DIR", ROOT / ".litert_cache"))
 
-# which scaffold to serve: mise | bench | sight
+# which app to serve (apps/<name>); Mise is the product
 APP = os.environ.get("APP", "mise")
 
 # "litert" (primary, LiteRT-LM) or "ollama" (fallback)

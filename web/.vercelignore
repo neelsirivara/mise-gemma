@@ -1,8 +1,3 @@
-# Vercel serves an existing file before applying rewrites, so the classic demo page at /index.html
-# would shadow the Mise app (vercel.json rewrites / -> /mise/index.html). Leave it out of the upload.
-/index.html
-/app.js
-/style.css
-/manifest.webmanifest
+# Local deploy credentials never go up.
 .env*
 .vercel

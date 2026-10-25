@@ -1,7 +1,7 @@
-"""Generic FastAPI server: serves the UI and brokers camera/mic -> Gemma -> tools
-for whichever app scaffold is selected.
+"""The Mise hub: a FastAPI server that serves the UI and brokers camera/mic -> Gemma -> tools.
+Apps plug in through core/app.py (apps/mise is the product).
 
-Run:  run.cmd (Windows) / ./run.sh (macOS, Linux), or:  python -m core.server [mise|bench|sight]
+Run:  double-click Mise (core/launcher.py), run.cmd (Windows) / ./run.sh (macOS, Linux), or:  python -m core.server mise
 """
 from __future__ import annotations
 
@@ -306,7 +306,7 @@ async def run_tool(name: str, args: dict):
 
 @api.get("/", include_in_schema=False)
 def home():
-    # each app picks its own front page (Mise has a full UI in web/mise/; others share web/index.html)
+    # each app picks its own front page (Mise's UI is web/mise/)
     return FileResponse(config.WEB_DIR / APP.web_entry, headers={"Cache-Control": "no-store"})
 
 
