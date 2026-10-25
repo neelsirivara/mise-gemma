@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 500">
+  <!-- Mise mark: a deep green pot with the pink lid lifted, tomato, cucumber and lemon peeking out,
+       and a curl of peach steam. Flat shapes, no outlines. -->
+  <!-- steam -->
+  <path d="M528 34 C 582 34, 614 80, 602 128 C 592 166, 560 186, 528 186 C 514 206, 520 226, 504 248 C 488 270, 460 284, 432 306 C 430 276, 446 256, 458 236 C 470 214, 466 198, 478 180 C 448 164, 436 132, 446 98 C 458 60, 488 34, 528 34 Z" fill="#f7d9bd"/>
+  <ellipse cx="550" cy="76" rx="18" ry="12" fill="#fff4e8" opacity=".75" transform="rotate(-30 550 76)"/>
+  <!-- ingredients behind the rim -->
+  <circle cx="226" cy="318" r="68" fill="#e2553f"/>
+  <path d="M226 248 l9 11 l14 -4 l-7 13 l11 9 l-15 2 l-2 14 l-10 -11 l-11 9 l0 -16 l-14 -4 l14 -7 z" fill="#3f7a46"/>
+  <rect x="294" y="214" width="48" height="146" rx="24" fill="#3e5a47" transform="rotate(22 318 287)"/>
+  <ellipse cx="398" cy="300" rx="68" ry="44" fill="#f5d04a" transform="rotate(-22 398 300)"/>
+  <ellipse cx="456" cy="266" rx="14" ry="10" fill="#f5d04a" transform="rotate(-22 456 266)"/>
+  <!-- handles -->
+  <rect x="14" y="300" width="100" height="58" rx="29" fill="none" stroke="#3e5a47" stroke-width="26"/>
+  <rect x="526" y="300" width="100" height="58" rx="29" fill="none" stroke="#3e5a47" stroke-width="26"/>
+  <!-- pot -->
+  <path d="M74 300 Q320 326 566 300 L550 420 Q540 490 462 492 L178 492 Q100 490 90 420 Z" fill="#3e5a47"/>
+  <!-- lid, lifted and tilted -->
+  <ellipse cx="250" cy="150" rx="210" ry="60" fill="#efb3bd" transform="rotate(-14 250 150)"/>
+  <path d="M182 96 C 178 60, 222 46, 256 54 C 290 62, 296 96, 272 112 C 262 124, 234 130, 214 126 C 194 122, 184 112, 182 96 Z" fill="#3e5a47"/>
+</svg>

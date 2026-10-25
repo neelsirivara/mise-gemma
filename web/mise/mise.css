@@ -1,32 +1,33 @@
-/* Mise — sunlit kitchen tiles: mint-green tile, warm plate white, deep leaf green for actions,
-   with pink, coral and lemon from a breakfast table in the sun. Coral marks anything timed.
+/* Mise — flat and warm: cream page, deep green pot, pink lid, peach steam, tomato, lemon and mint,
+   like the logo. Rounded Nunito for headings, Atkinson Hyperlegible for reading. Peach/coral marks timers.
    Layout: the landing page is the four input steps; cook mode takes the whole screen in huge type. */
 :root {
-  --enamel: #dcebdd;      /* page: mint tile */
-  --tile-line: rgb(255 252 240 / 80%);
-  --sunlight: rgb(255 240 190 / 75%);
-  --beam: rgb(255 255 255 / 30%);
-  --leaf-shadow: 0.13;
-  --plate: #fffdf7;       /* raised surfaces: plate white */
-  --plate-glass: rgb(255 253 247 / 88%);
-  --card-line: rgb(255 255 255 / 70%);
-  --ink: #1f3326;         /* text: deep green-black */
-  --ink-2: #4c6454;
-  --line: #cddccf;
-  --rim: #3f6e48;         /* leaf green: actions, focus, the brand */
-  --rim-ink: #fffdf7;
-  --rim-wash: #d5e8d4;
-  --saffron: #c25b2b;     /* coral: timers and time cues (text-safe shade) */
-  --saffron-wash: #fde3d2;
-  --pink: #f2c7cf; --pink-wash: #fbe7eb;
-  --sun: #f6d54a; --sun-wash: #fdf2bd;
-  --coral: #f2956b;
-  --tomato: #c4412f;      /* warnings */
-  --leaf: #2f7a45;        /* done, good */
-  --shadow: 0 1px 2px rgb(31 51 38 / 7%), 0 12px 32px rgb(31 51 38 / 10%);
-  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --enamel: #fbf7ef;      /* page: warm cream */
+  --tile-line: transparent;
+  --sunlight: rgb(255 236 200 / 55%);
+  --beam: transparent;
+  --leaf-shadow: 0;
+  --plate: #ffffff;       /* raised surfaces */
+  --plate-glass: #ffffff;
+  --card-line: #efe6d7;
+  --ink: #2f4637;         /* text: deep green */
+  --ink-2: #6a7b6f;
+  --line: #e7ddcc;
+  --rim: #3e5a47;         /* pot green: actions, focus, the brand */
+  --rim-ink: #fffaf2;
+  --rim-wash: #dcefe0;    /* mint */
+  --saffron: #c25b2b;     /* timers and time cues (text-safe shade) */
+  --saffron-wash: #fde6d6;
+  --pink: #efb3bd; --pink-wash: #fbeaed;
+  --sun: #f5d04a; --sun-wash: #fdf3c4;
+  --coral: #f2a07a;
+  --peach: #f7d9bd;
+  --tomato: #d9473a;      /* warnings */
+  --leaf: #3f7a46;        /* done, good */
+  --shadow: 0 1px 2px rgb(62 90 71 / 5%), 0 6px 18px rgb(62 90 71 / 6%);
+  --display: "Nunito", "Bricolage Grotesque", system-ui, sans-serif;
   --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
-  --r: 22px;
+  --r: 24px;
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -55,13 +56,10 @@ body {
   margin: 0; color: var(--ink); font: 400 17px/1.5 var(--body); min-height: 100dvh;
   background-color: var(--enamel);
   background-image:
-    radial-gradient(110% 65% at 100% 0%, var(--sunlight), transparent 62%),
-    linear-gradient(var(--tile-line) 2px, transparent 2px),
-    linear-gradient(90deg, var(--tile-line) 2px, transparent 2px);
-  background-size: auto, 104px 104px, 104px 104px;
+    radial-gradient(90% 55% at 100% 0%, var(--sunlight), transparent 60%);
   background-attachment: fixed;
 }
-/* sun beams and a palm-leaf shadow falling across the tiles */
+/* (flat look: the old sun beams and palm-leaf shadow are switched off via --beam / --leaf-shadow) */
 body::before, body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0; }
 body::before {
   background: linear-gradient(118deg, transparent 22%, var(--beam) 30%, transparent 38%, transparent 55%, var(--beam) 61%, transparent 67%);
@@ -73,7 +71,7 @@ body::after {
 button, input, textarea, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--rim); outline-offset: 2px; border-radius: 6px; }
-h1, h2, h3 { font-family: var(--display); line-height: 1.12; text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+h1, h2, h3 { font-family: var(--display); font-weight: 900; line-height: 1.12; text-wrap: balance; margin: 0; letter-spacing: -0.01em; color: var(--rim); }
 h1 { font-size: clamp(30px, 5vw, 44px); font-weight: 800; }
 h2 { font-size: 24px; font-weight: 700; }
 h3 { font-size: 19px; font-weight: 700; }
@@ -95,9 +93,9 @@ code { background: var(--rim-wash); padding: 1px 6px; border-radius: 6px; font-s
 }
 .brand {
   display: flex; align-items: center; gap: 10px; border: 0; background: none; padding: 0;
-  font: 800 24px/1 var(--display); letter-spacing: -0.02em;
+  font: 900 26px/1 var(--display); letter-spacing: -0.01em; color: var(--rim);
 }
-.brand-mark { width: 30px; height: 30px; border-radius: 8px; display: block; box-shadow: 0 1px 3px rgb(31 51 38 / 20%); }
+.brand-mark { width: 44px; height: auto; display: block; }
 .nav { display: flex; gap: 4px; }
 .nav button { border: 0; background: none; padding: 8px 12px; border-radius: 999px; font-weight: 700; color: var(--ink-2); }
 .nav button[aria-current="page"] { background: var(--rim-wash); color: var(--rim); }
@@ -120,7 +118,6 @@ code { background: var(--rim-wash); padding: 1px 6px; border-radius: 6px; font-s
 .loading { color: var(--ink-2); }
 .card {
   background: var(--plate-glass); border: 1px solid var(--card-line); border-radius: var(--r); padding: 20px; box-shadow: var(--shadow);
-  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
 }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 .row.end { justify-content: flex-end; }
@@ -158,7 +155,9 @@ button.chip[aria-pressed="true"] { border-color: var(--rim); background: var(--r
 /* ---------------------------------------------------------------- landing: the four steps */
 .landing { display: flex; flex-direction: column; gap: 22px; }
 .intro { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; }
-.intro h1 { font-size: clamp(36px, 5vw, 56px); font-weight: 800; letter-spacing: -0.025em; max-width: 22ch; line-height: 1.02; }
+.intro h1 { font-size: clamp(36px, 5vw, 56px); font-weight: 900; letter-spacing: -0.025em; max-width: 22ch; line-height: 1.02; }
+.tagline { font: 800 13px/1 var(--display); letter-spacing: .3em; color: var(--rim); }
+.tagline i { font-style: normal; color: var(--pink); padding: 0 .35em; }
 .intro .lead { font-size: clamp(17px, 2vw, 20px); color: var(--ink-2); max-width: 40ch; }
 .landing-grid { display: flex; flex-direction: column; gap: 24px; }
 /* laptop: camera on the left, steps 2-4 and the button on the right, all on one screen */
@@ -177,9 +176,9 @@ button.chip[aria-pressed="true"] { border-color: var(--rim); background: var(--r
   font: 800 17px/1 var(--display); color: #1f3326; box-shadow: inset 0 -2px 0 rgb(0 0 0 / 10%);
 }
 .step-n.n1 { background: var(--sun); }
-.step-n.n2 { background: var(--coral); }
+.step-n.n2 { background: var(--peach); }
 .step-n.n3 { background: var(--pink); }
-.step-n.n4 { background: #8fc694; }
+.step-n.n4 { background: var(--rim-wash); }
 .text-in {
   border: 1.5px solid var(--line); background: var(--plate); border-radius: 14px; padding: 12px 14px; font-size: 16px; width: 100%;
 }
@@ -216,7 +215,7 @@ button.chip[aria-pressed="true"] { border-color: var(--rim); background: var(--r
 
 .seg { display: flex; flex-wrap: wrap; gap: 8px; }
 .seg button { min-width: 72px; padding: 10px 16px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--plate); font-weight: 700; }
-.seg button[aria-pressed="true"] { border-color: var(--coral); background: var(--saffron-wash); }
+.seg button[aria-pressed="true"] { border-color: var(--rim); background: var(--rim-wash); color: var(--rim); }
 .stepper { display: inline-flex; align-items: center; border: 1.5px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--plate); }
 .stepper button { width: 46px; height: 46px; border: 0; background: transparent; font-size: 22px; }
 .stepper output { min-width: 28px; text-align: center; font: 800 20px/1 var(--display); }
