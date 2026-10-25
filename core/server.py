@@ -70,7 +70,8 @@ def warm():
 api.mount("/assets", StaticFiles(directory=config.ROOT / "assets"), name="assets")  # demo stills: /?still=test/x.jpg
 
 # The page may be hosted elsewhere (e.g. Vercel) and call this laptop over the LAN.
-api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+                   allow_private_network=True)  # answer browsers' private-network preflights (else 400)
 
 
 @api.middleware("http")
