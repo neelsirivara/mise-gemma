@@ -61,7 +61,10 @@ class Cook:
         s = r["steps"][i]
         n = len(r["steps"])
         parts = [f"Step {i + 1} of {n}." if i < n - 1 else f"Last step, {i + 1} of {n}.", s["text"]]
-        if s["timer"]:
+        if s["timer"] and i in self.step_timers:  # coming back to a step whose timer already started
+            t = next((x for x in SESSION.timers if x.id == self.step_timers[i]), None)
+            parts.append(f"Its timer has {_mins(t.remaining() / 60)} left." if t and not t.fired else "Its timer has already finished.")
+        elif s["timer"]:
             parts.append(f"I've started {_mins_adj(s['minutes'])} timer.")
             nxt = r["steps"][i + 1] if i + 1 < n else None
             if s["minutes"] >= 3 and nxt and not nxt["timer"]:
@@ -92,7 +95,7 @@ class Cook:
             intro = [f"Let's make {r['title']}" + (f", version {r['version']}." if r["version"] > 1 else ".")]
             if r.get("note_for_next_time"):
                 intro.append(r["note_for_next_time"])
-            done_at = time.time() + r["total_minutes"] * 60
+            done_at = time.time() + max(r["total_minutes"], sum(s["minutes"] for s in r["steps"])) * 60
             intro.append(f"It takes about {_mins(r['total_minutes'])}, so you'll be eating around {_clock(done_at)}.")
             waits = [(s["minutes"], k) for k, s in enumerate(r["steps"]) if s["timer"]]
             if waits:
@@ -101,7 +104,7 @@ class Cook:
             intro.append(f"You need {len(r['ingredients'])} ingredients; they're on screen. "
                          "Say next when you're ready to move on, or ask me anything.")
             self.say(" ".join(intro), "intro")
-            self._enter(0)
+            self._enter(0, tone="after-intro")  # queued after the intro, not cutting it off
             if not r.get("tips"):
                 threading.Thread(target=self._make_tips, args=(r["id"], r["version"]), daemon=True).start()
             return self.state()
@@ -121,7 +124,7 @@ class Cook:
         except Exception:
             pass  # tips are a bonus; cooking works without them
 
-    def _enter(self, i: int):
+    def _enter(self, i: int, tone: str = "narration"):
         self.step, self.step_started_at = i, time.time()
         SESSION.clear_fired()  # finished timers from earlier steps don't follow you into this one
         s = self.recipe["steps"][i]
@@ -129,7 +132,7 @@ class Cook:
             set_timer(f"Step {i + 1}: {_short(s['text'])}", s["minutes"])
             self.step_timers[i] = SESSION.timers[-1].id
         SESSION.emit("cook", step=i)
-        self.say(self._step_line(i))
+        self.say(self._step_line(i), tone)
 
     def _leave(self):
         self.step_seconds[self.step] += time.time() - self.step_started_at

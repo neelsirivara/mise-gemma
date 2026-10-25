@@ -51,10 +51,19 @@ class NativeLLM {
     };
   }
 
-  #call(msg, onChunk = () => {}) {
+  // every request has a deadline: a reply that never comes is cancelled on the phone and reported, instead of
+  // leaving the app "Thinking…" forever (downloads and loading report progress, so they get longer)
+  #call(msg, onChunk = () => {}, ms = msg.op === "generate" ? 120000 : msg.op === "load" ? 3600000 : 15000) {
     const id = `m${++this.#n}`;
     return new Promise((ok, bad) => {
-      this.#pending.set(id, { ok, bad, onChunk, text: "" });
+      const timer = setTimeout(() => {
+        if (!this.#pending.has(id)) return;
+        this.#pending.delete(id);
+        try { window.MiseNative.post({ op: "cancel", id }); } catch {}
+        bad(new Error("Gemma took too long to answer. Try again."));
+      }, ms);
+      const done = (fn) => (v) => { clearTimeout(timer); fn(v); };
+      this.#pending.set(id, { ok: done(ok), bad: done(bad), onChunk, text: "" });
       window.MiseNative.post({ ...msg, id });
     });
   }

@@ -26,11 +26,20 @@ export class Mic {
   async init() {
     if (this.ctx) return;
     // iOS: create the AudioContext inside the tap, before any await
-    this.ctx = new AudioContext();
-    this.rate = this.ctx.sampleRate;
-    const stream = await navigator.mediaDevices.getUserMedia({
-      audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    });
+    const ctx = (this.ctx = new AudioContext());
+    this.rate = ctx.sampleRate;
+    let stream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+      });
+    } catch (e) {
+      // permission denied or no mic: forget this attempt, so allowing the mic later works without a reload
+      this.ctx = null;
+      try { ctx.close(); } catch {}
+      throw e;
+    }
+    this.stream = stream;
     await this.ctx.resume();
     const src = this.ctx.createMediaStreamSource(stream);
     const node = this.ctx.createScriptProcessor(2048, 1, 1);
@@ -87,7 +96,8 @@ export class Mic {
       if (this.mode === "vad") {
         const thr = Math.max(0.012, this.noise * 3);
         this.silentMs = rms < thr ? this.silentMs + ms : 0;
-        if (this.silentMs > 900 || performance.now() - this.startedAt > 15000) this.stop(true);
+        // 1.3 s of quiet ends a hands-free utterance (people pause mid-sentence: "okay, I'm done... what's next?")
+        if (this.silentMs > 1300 || performance.now() - this.startedAt > 15000) this.stop(true);
       }
       return;
     }
@@ -167,7 +177,7 @@ export class Recognizer {
     r.lang = navigator.language || "en-US";
     r.interimResults = false;
     r.continuous = true;
-    try { r.processLocally = true; } catch {} // Chrome: on-device speech; ignored elsewhere
+
     let text = "", ended = false, finish;
     const over = new Promise((ok) => (finish = ok));
     r.onresult = (e) => { text = [...e.results].filter((x) => x.isFinal).map((x) => x[0].transcript).join(" ").trim(); };
@@ -262,7 +272,12 @@ export class Speaker {
     const u = new SpeechSynthesisUtterance(item.text);
     if (this.voice) u.voice = this.voice;
     u.rate = 1.03;
-    u.onend = u.onerror = () => { if (item.gen === this.gen) this.#next(); };
+    // some browsers never fire onend: move on anyway after about as long as the sentence takes to say
+    let moved = false;
+    const next = () => { if (!moved && item.gen === this.gen) { moved = true; clearTimeout(this.watchdog); this.#next(); } };
+    u.onend = u.onerror = next;
+    this.utterance = u; // kept referenced (Safari can drop events for collected utterances)
+    this.watchdog = setTimeout(next, 3000 + item.text.length * 85);
     synth().speak(u);
   }
 

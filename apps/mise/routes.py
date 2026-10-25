@@ -72,6 +72,8 @@ def get_recipe(rid: str):
 @router.delete("/book/{rid}")
 def delete_recipe(rid: str):
     _get(rid)
+    if COOK.active and (COOK.recipe or {}).get("id") == rid:
+        raise HTTPException(409, "You're cooking this one. Finish or stop cooking first.")
     book.delete(rid)
     return {"ok": True}
 

@@ -94,8 +94,9 @@ export const postForm = async (path, form) => (await call(path, { method: "POST"
 export const del = async (path) => (await call(path, { method: "DELETE" })).json();
 
 // POST that answers with newline-delimited JSON; calls onEvent for each event, returns them all.
-export async function stream(path, { json, form } = {}, onEvent = () => {}) {
+export async function stream(path, { json, form, timeout = 0 } = {}, onEvent = () => {}) {
   const opts = { method: "POST" };
+  if (timeout) opts.signal = AbortSignal.timeout(timeout); // a hub that stops answering mid-reply
   if (json) { opts.headers = { "Content-Type": "application/json" }; opts.body = JSON.stringify(json); }
   if (form) opts.body = form;
   const res = await call(path, opts);

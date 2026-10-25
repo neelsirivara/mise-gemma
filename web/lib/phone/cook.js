@@ -82,7 +82,10 @@ export const COOK = {
   stepLine(i) {
     const r = this.recipe, s = r.steps[i], n = r.steps.length;
     const parts = [i < n - 1 ? `Step ${i + 1} of ${n}.` : `Last step, ${i + 1} of ${n}.`, s.text];
-    if (s.timer) {
+    const old = s.timer && i in this.stepTimers ? SESSION.timers.find((y) => y.id === this.stepTimers[i]) : undefined;
+    if (s.timer && i in this.stepTimers) { // coming back to a step whose timer already started
+      parts.push(old && !old.fired ? `Its timer has ${mins(remaining(old) / 60)} left.` : "Its timer has already finished.");
+    } else if (s.timer) {
       parts.push(`I've started ${minsAdj(s.minutes)} timer.`);
       const nxt = r.steps[i + 1];
       if (s.minutes >= 3 && nxt && !nxt.timer) parts.push(`While that's going, you can get ahead on the next step: ${nxt.text}`);
@@ -106,7 +109,8 @@ export const COOK = {
     const r = this.recipe;
     const intro = [`Let's make ${r.title}` + (r.version > 1 ? `, version ${r.version}.` : ".")];
     if (r.note_for_next_time) intro.push(r.note_for_next_time);
-    intro.push(`It takes about ${mins(r.total_minutes)}, so you'll be eating around ${clock(t() + r.total_minutes * 60)}.`);
+    const plan = Math.max(r.total_minutes, r.steps.reduce((a, s) => a + s.minutes, 0));
+    intro.push(`It takes about ${mins(r.total_minutes)}, so you'll be eating around ${clock(t() + plan * 60)}.`);
     const waits = r.steps.map((s, k) => [s.minutes, k, s.timer]).filter((w) => w[2]);
     if (waits.length) {
       const [m, k] = waits.reduce((a, b) => (b[0] > a[0] ? b : a));
@@ -114,7 +118,7 @@ export const COOK = {
     }
     intro.push(`You need ${r.ingredients.length} ingredients; they're on screen. Say next when you're ready to move on, or ask me anything.`);
     this.say(intro.join(" "), "intro");
-    this.enter(0);
+    this.enter(0, "after-intro"); // queued after the intro, not cutting it off
     if (!r.tips && this.makeTips) this._tips(r.id, r.version);
     return this.state();
   },
@@ -128,14 +132,14 @@ export const COOK = {
     } catch {} // tips are a bonus
   },
 
-  enter(i) {
+  enter(i, tone = "narration") {
     this.step = i;
     this.stepStartedAt = t();
     SESSION.clearFired(); // finished timers from earlier steps don't follow you into this one
     const s = this.recipe.steps[i];
     if (s.timer && !(i in this.stepTimers)) this.stepTimers[i] = setTimer(`Step ${i + 1}: ${short(s.text)}`, s.minutes).id;
     SESSION.emit("cook", { step: i });
-    this.say(this.stepLine(i));
+    this.say(this.stepLine(i), tone);
   },
 
   leave() { this.stepSeconds[this.step] += t() - this.stepStartedAt; },

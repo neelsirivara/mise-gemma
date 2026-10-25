@@ -73,7 +73,7 @@ export const app = {
     const voice = new SentenceSpeaker(this.speaker);
     let reply = "", noop = false;
     try {
-      await stream("/api/chat", { form: fd }, (ev) => {
+      await stream("/api/chat", { form: fd, timeout: 90000 }, (ev) => {
         if (ev.type === "text") { reply += ev.text; if (!/^\s*NOOP/i.test(reply)) voice.push(ev.text); onText(reply); }
         if (ev.type === "tool") onTool(ev);
         if (ev.type === "heard") onHeard(ev);
@@ -110,6 +110,7 @@ export const app = {
       if (first) continue; // don't replay old events after a reload
       // a new step's narration cuts off the previous one (fast "next, next")
       if (ev.kind === "say") this.speaker.say(ev.text, { interrupt: ev.tone === "narration" || ev.tone === "intro" });
+      // (tone "after-intro": step 1 waits for the intro, so "what changed since last time" is always heard)
       if (ev.kind === "timer_done") { beep(); toast(`⏰ ${ev.label} is done`); }
       if (ev.kind === "alert") { this.speaker.say(ev.text, { interrupt: true }); toast(`⚠ ${ev.text}`, 6000); }
       if (ev.kind === "suggest") toast(ev.text);
@@ -127,7 +128,7 @@ function setHub(ok, engine) {
   const [state, label] = engine?.phone
     ? (engine.load_error ? ["bad", "Gemma couldn't start on this phone. Tap for options."]
       : engine.ready ? ["ok", "Gemma 4 is running on this phone."] : ["warm", "Gemma isn't loaded on this phone yet."])
-    : !ok ? ["bad", `No Mise hub at ${HUB || location.host}. Tap to connect.`]
+    : !ok ? ["bad", HUB ? `Can't reach Mise at ${HUB}. Tap to change.` : "Can't reach Mise on your laptop. Tap to connect, or run Gemma on this phone."]
     : engine?.load_error ? ["bad", "The models failed to load on the laptop."]
     : engine?.ready ? ["ok", "Connected: Gemma 4 is running on your laptop."]
     : ["warm", "Connected; the models are warming up."];

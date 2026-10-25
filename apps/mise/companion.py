@@ -130,7 +130,8 @@ def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterat
         st = COOK.state()
         if st.get("eta"):
             parts.append(f"you'll be eating around {st['eta']}")
-        yield {"type": "text", "text": (", and ".join(parts) or "No timers are running") + "."}
+        said = (", and ".join(parts) or "No timers are running") + "."
+        yield {"type": "text", "text": said[0].upper() + said[1:]}
     elif intent == "set_timer":
         sec = max(5, int(out["timer_seconds"] or 60))
         set_timer(out["timer_label"] or "timer", sec / 60)

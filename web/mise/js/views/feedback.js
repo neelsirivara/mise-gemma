@@ -71,7 +71,9 @@ export async function enter(root, params, app) {
   mic.blocked = () => true;
   const state = (t) => { if ($("#voiceState")) $("#voiceState").textContent = t; };
   mic.onState = (m) => { $("#voiceBtn")?.classList.toggle("rec", !!m); if (m) state("Recording… let go when you're done"); };
-  mic.onUtterance = async (blob, s) => {
+  let pendingNote = Promise.resolve();
+  mic.onUtterance = (blob, s) => (pendingNote = writeDown(blob, s));
+  const writeDown = async (blob, s) => {
     state("Writing down what you said…");
     let text = blob.transcript; // on-phone mode without audio input: the phone's speech recognizer already heard it
     if (text === undefined) {
@@ -97,7 +99,7 @@ export async function enter(root, params, app) {
   const vb = $("#voiceBtn");
   vb.addEventListener("pointerdown", (e) => {
     e.preventDefault();
-    vb.setPointerCapture?.(e.pointerId);
+    try { vb.setPointerCapture(e.pointerId); } catch {}
     app.speaker.stop();
     mic.start("ptt").catch(() => state("The microphone isn't available. Allow it for this site, or type instead."));
   });
@@ -107,8 +109,16 @@ export async function enter(root, params, app) {
   let sending = false;
   async function submit(improve) {
     if (sending) return;
+    sending = true;
+    $("#improve").disabled = $("#justSave").disabled = true;
+    await pendingNote.catch(() => {}); // a voice note still being written down goes in too
+    sending = false;
     const notes = $("#notes").value.trim();
-    if (!F.rating && !F.tags.size && !notes && !F.voice) { toast("Add a rating, a quick note, or a few words first."); return; }
+    if (!F.rating && !F.tags.size && !notes && !F.voice) {
+      $("#improve").disabled = $("#justSave").disabled = false;
+      toast("Add a rating, a quick note, or a few words first.");
+      return;
+    }
     const fd = new FormData();
     fd.append("id", r.id);
     fd.append("rating", F.rating);

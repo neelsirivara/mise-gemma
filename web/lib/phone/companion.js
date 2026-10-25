@@ -102,7 +102,8 @@ export async function* handle(llm, { text, image, audio }, reviseInBackground) {
     const parts = SESSION.timers.filter((x) => !x.fired).map((x) => `${x.label.split(":")[0]} has ${dur(remaining(x))} left`);
     const st = COOK.state();
     if (st.eta) parts.push(`you'll be eating around ${st.eta}`);
-    yield { type: "text", text: (parts.join(", and ") || "No timers are running") + "." };
+    const said = (parts.join(", and ") || "No timers are running") + ".";
+    yield { type: "text", text: said[0].toUpperCase() + said.slice(1) };
   } else if (intent === "set_timer") {
     const sec = Math.max(5, out.timer_seconds || 60);
     setTimer(out.timer_label || "timer", sec / 60);

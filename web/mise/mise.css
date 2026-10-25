@@ -603,3 +603,7 @@ body.camfull .cook-bar { background: rgb(255 253 247 / 82%); backdrop-filter: bl
 }
 @media (max-width: 340px) { .cook-bar .btn { padding: 6px 8px; font-size: 14px; } .mic { width: 64px; height: 64px; } }
 @media (max-width: 400px) { .wide-only { display: none; } .cook-bar #backBtn { min-width: 44px; } }
+/* very long titles and words wrap instead of widening the page */
+h1, h2, h3, .title, .recipe-row h3, .stage .text { overflow-wrap: anywhere; }
+.cook-top .title { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.toast { overflow-wrap: anywhere; }

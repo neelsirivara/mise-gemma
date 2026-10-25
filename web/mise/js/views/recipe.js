@@ -74,9 +74,13 @@ export async function enter(root, params, app) {
     try { await postJSON("/api/mise/cook/start", { id: r.id }); app.go("cook"); }
     catch (err) { toast(err.message); if ($("#cook")) $("#cook").disabled = false; }
   };
-  let armed = false;
+  let armed = 0;
   $("#del").onclick = async (e) => {
-    if (!armed) { armed = true; e.target.textContent = "Tap again to delete"; setTimeout(() => { armed = false; e.target.textContent = "Delete recipe"; }, 3000); return; }
+    // two separate taps: the second must come after a short pause, so a double tap can't delete by accident
+    if (!armed || Date.now() - armed < 500) {
+      if (!armed) { armed = Date.now(); e.target.textContent = "Tap again to delete"; setTimeout(() => { armed = 0; if ($("#del")) $("#del").textContent = "Delete recipe"; }, 3000); }
+      return;
+    }
     e.target.disabled = true;
     try {
       await del(`/api/mise/book/${r.id}`);

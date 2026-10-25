@@ -117,7 +117,13 @@ export async function enter(root, _params, app) {
   };
   const micBtn = $("#mic");
   const micFailed = () => toast("The microphone isn't available. Allow it for this site, or tap Next and Repeat.", 5000);
-  micBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); micBtn.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt").catch(micFailed); });
+  micBtn.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    if (app.busy) { if ($("#micHint")) $("#micHint").textContent = "Still thinking… one moment"; return; } // it would be dropped
+    try { micBtn.setPointerCapture(e.pointerId); } catch {}
+    app.speaker.stop();
+    mic.start("ptt").catch(micFailed);
+  });
   // also when the mic is still starting (first tap: permission prompt), so a quick tap can't leave it recording
   ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => micBtn.addEventListener(ev, () => (mic.mode === "ptt" || mic.starting) && mic.stop(true)));
   micBtn.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -171,6 +177,7 @@ export async function enter(root, _params, app) {
   addEventListener("keyup", keyup);
 
   // ---- hub events
+  let ticks = 0;
   off = [
     app.on(async (ev) => {
       if (ev.kind === "cook") {
@@ -179,7 +186,10 @@ export async function enter(root, _params, app) {
         draw();
       }
       if (ev.kind === "say") { $("#said").textContent = ev.text; }
-      if (ev.kind === "tick") drawTimers(ev.timers);
+      if (ev.kind === "tick") {
+        drawTimers(ev.timers);
+        if (++ticks % 20 === 0) getJSON("/api/mise/cook/state").then((s) => { if (s.active && $("#eta")) $("#eta").textContent = s.eta ? `Eat around ${s.eta}` : ""; }).catch(() => {});
+      }
       if (ev.kind === "busy") mic.onState(mic.mode);
     }),
     () => { removeEventListener("keydown", keys); removeEventListener("keyup", keyup); removeEventListener("resize", onResize); clearInterval(watchT); mic.handsFree = false; },

@@ -13,7 +13,11 @@ export async function enter(root, _params, app) {
     </section>`);
   root.querySelector("#goPantry").onclick = () => app.go("pantry");
 
-  const rows = await getJSON("/api/mise/book").catch(() => []);
+  const rows = await getJSON("/api/mise/book").catch(() => null);
+  if (rows === null) {
+    root.querySelector("#book").innerHTML = `<div class="empty">Can't reach Mise on your laptop, so the recipe book can't load. Check the laptop is running Mise, or run Gemma on this phone (tap the dot at the top).</div>`;
+    return;
+  }
   root.querySelector("#count").textContent = rows.length ? `${rows.length} recipe${rows.length > 1 ? "s" : ""}` : "";
   const book = root.querySelector("#book");
   if (!rows.length) {

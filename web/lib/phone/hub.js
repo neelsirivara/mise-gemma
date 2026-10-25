@@ -109,7 +109,12 @@ async function route(method, path, query, body) {
   // ------------------------------------------------ recipe book
   if (path === "/api/mise/book" && method === "GET") return json((await book.all()).map(book.summaryRow));
   if ((m = match(/^\/api\/mise\/book\/([a-z0-9-]{1,64})$/))) {
-    if (method === "DELETE") { await book.get(m[1]); await book.remove(m[1]); return json({ ok: true }); }
+    if (method === "DELETE") {
+      await book.get(m[1]);
+      if (COOK.active && COOK.recipe?.id === m[1]) return json({ detail: "You're cooking this one. Finish or stop cooking first." }, 409);
+      await book.remove(m[1]);
+      return json({ ok: true });
+    }
     return json(await book.get(m[1]));
   }
 

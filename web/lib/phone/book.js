@@ -114,6 +114,7 @@ export async function revise(id, recipe, changes, note, reason) {
 
 // First run: the same starter recipes the laptop seeds, so the book isn't empty.
 export async function seed() {
+  try { if (localStorage.getItem("mise:seeded")) return; } catch {} // once: deleting them all keeps the book empty
   if ((await tx("readonly", (s) => s.count())) > 0) return;
   for (const name of STARTERS) {
     try {
@@ -121,4 +122,5 @@ export async function seed() {
       await add(src, "starter", [], now() - 86400); // sort below anything you make today
     } catch {}
   }
+  try { localStorage.setItem("mise:seeded", "1"); } catch {}
 }
