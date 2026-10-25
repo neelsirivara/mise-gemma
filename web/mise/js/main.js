@@ -244,4 +244,19 @@ async function resume() {
 }
 boot();
 window.mise = app; // handy in devtools and for the UI tests
+
+// A home-screen web app keeps its page alive for days, so it would never pick up a new version. When Mise comes
+// back to the foreground and its code has changed on the server, reload, unless you're in the middle of cooking.
+const CODE = ["/mise/index.html", "/mise/mise.css", "/mise/js/main.js", "/mise/js/ui.js", "/mise/js/mum.js", "/mise/js/scenes.js",
+  ...["capture", "home", "pantry", "recipe", "cook", "feedback", "phone"].map((v) => `/mise/js/views/${v}.js`),
+  "/lib/api.js", "/lib/voice.js", "/lib/camera.js", "/lib/phone/hub.js", "/lib/phone/llm.js", "/lib/phone/cook.js"];
+const stamp = async () => (await Promise.all(CODE.map((p) => fetch(p, { method: "HEAD", cache: "no-store" })
+  .then((r) => r.headers.get("etag") || r.headers.get("last-modified") || "").catch(() => "")))).join("|");
+let codeStamp = null;
+stamp().then((s) => (codeStamp = s));
+document.addEventListener("visibilitychange", async () => {
+  if (document.visibilityState !== "visible" || !codeStamp || app.view === VIEWS.cook || app.busy) return;
+  const now = await stamp();
+  if (now && now !== codeStamp && !now.includes("||")) location.reload();
+});
 export { url };

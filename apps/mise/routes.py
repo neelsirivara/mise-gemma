@@ -130,6 +130,18 @@ def cook_state():
     return COOK.state()
 
 
+# ---------------------------------------------------------------- voice note → text
+@router.post("/transcribe")
+async def transcribe(audio: UploadFile = File(...)):
+    from anyio import to_thread
+
+    from .companion import transcribe as hear
+    data = await audio.read()
+    t = time.time()
+    text = await to_thread.run_sync(hear, data)
+    return {"text": text, "seconds": round(time.time() - t, 1)}
+
+
 # ---------------------------------------------------------------- feedback → new version
 def _latest_step_seconds(r: dict) -> list[float]:
     cooks = [c for c in r["cooks"] if c["version"] == r["version"]]

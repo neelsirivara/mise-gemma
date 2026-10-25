@@ -403,6 +403,9 @@ body.cooking .top { display: none; }
 }
 .mic svg { width: 34px; height: 34px; }
 .mic.rec { background: var(--tomato); }
+/* press-and-hold buttons: no text selection or iOS callout while held */
+.mic, .btn.hold { touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.btn.hold.rec { background: var(--tomato); border-color: var(--tomato); color: #fff; }
 .mic.busy { opacity: 0.6; }
 .mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .mic-wrap small { color: var(--ink-2); font-size: 13px; }

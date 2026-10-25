@@ -150,6 +150,12 @@ async function route(method, path, query, body) {
     return json(fn());
   }
 
+  // ------------------------------------------------ voice note → text
+  if (path === "/api/mise/transcribe") {
+    if (!llm.st.audio) return json({ text: "" }); // the phone's speech recognizer handles it in the page
+    return json({ text: await companion.transcribe(llm, body.get("audio")) });
+  }
+
   // ------------------------------------------------ feedback → new version
   if (path === "/api/mise/feedback") {
     const id = body.get("id");

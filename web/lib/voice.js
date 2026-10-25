@@ -39,8 +39,16 @@ export class Mic {
   }
 
   async start(mode = "ptt") {
-    if (this.mode) return;
-    await this.init();
+    if (this.mode || this.starting) return;
+    this.starting = true;
+    this.released = false;
+    try {
+      await this.init();
+    } finally {
+      this.starting = false;
+    }
+    // let go while the mic was still starting (first use: permission prompt): nothing to record
+    if (mode === "ptt" && this.released) return;
     this.chunks = [...this.preroll];
     this.silentMs = 0;
     this.startedAt = performance.now();
@@ -50,6 +58,7 @@ export class Mic {
   }
 
   stop(send = true) {
+    if (this.starting) this.released = true;
     if (!this.mode) return;
     this.mode = null;
     this.onState(null);
@@ -170,6 +179,9 @@ export class Recognizer {
   }
 }
 
+// the browser's own voice; missing in some engines and embedded views, so every use is guarded
+const synth = () => (typeof speechSynthesis !== "undefined" && typeof SpeechSynthesisUtterance !== "undefined" ? speechSynthesis : null);
+
 export class Speaker {
   // Queue of sentences. With a hub voice (Kokoro on the laptop) each sentence is fetched as WAV
   // and prefetched while the previous one plays; otherwise the browser's local voice is used.
@@ -183,12 +195,12 @@ export class Speaker {
     this.gen = 0; // bumps on stop(), so stale fetches never play
     this.onSpeak = () => {};
     const pick = () => {
-      const vs = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("en"));
+      const vs = (synth()?.getVoices() || []).filter((v) => v.lang.startsWith("en"));
       // local voices only: the cloud ones need the internet
       this.voice = vs.find((v) => v.localService && /aria|jenny|samantha|natural|zira/i.test(v.name))
         || vs.find((v) => v.localService) || null;
     };
-    speechSynthesis.onvoiceschanged = pick;
+    if (synth()) synth().onvoiceschanged = pick;
     pick();
     // iOS: audio may only start after a tap; unlock both speech paths on the first one
     addEventListener("pointerdown", () => this.unlock(), { once: true });
@@ -198,7 +210,7 @@ export class Speaker {
 
   unlock() {
     try {
-      speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+      synth()?.speak(new SpeechSynthesisUtterance(""));
       this.ctx = this.ctx || new AudioContext();
       this.ctx.resume();
       const b = this.ctx.createBuffer(1, 1, 22050), s = this.ctx.createBufferSource();
@@ -242,11 +254,12 @@ export class Speaker {
     }
     // browser voice fallback (no level meter: the mum's mouth just flaps while it talks)
     this.mode = "browser";
+    if (!synth()) { setTimeout(() => { if (item.gen === this.gen) this.#next(); }, 1200); return; } // no voice here: just pace the queue
     const u = new SpeechSynthesisUtterance(item.text);
     if (this.voice) u.voice = this.voice;
     u.rate = 1.03;
     u.onend = u.onerror = () => { if (item.gen === this.gen) this.#next(); };
-    speechSynthesis.speak(u);
+    synth().speak(u);
   }
 
   #meter() {
@@ -274,7 +287,7 @@ export class Speaker {
     this.queue = [];
     this.playing = null;
     try { this.source?.stop(); } catch {}
-    speechSynthesis.cancel();
+    synth()?.cancel();
     this.speaking = false;
   }
 }

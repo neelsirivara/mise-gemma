@@ -97,13 +97,19 @@ export async function enter(root, _params, app) {
     if (reply) log(reply);
   };
   const micBtn = $("#mic");
-  micBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); app.speaker.stop(); mic.start("ptt"); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => micBtn.addEventListener(ev, () => mic.mode === "ptt" && mic.stop(true)));
+  micBtn.addEventListener("pointerdown", (e) => { e.preventDefault(); micBtn.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt"); });
+  // also when the mic is still starting (first tap: permission prompt), so a quick tap can't leave it recording
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => micBtn.addEventListener(ev, () => (mic.mode === "ptt" || mic.starting) && mic.stop(true)));
   micBtn.addEventListener("contextmenu", (e) => e.preventDefault());
   $("#handsFree").onchange = async (e) => {
     mic.handsFree = e.target.checked;
     try { localStorage.setItem("mise:handsfree", mic.handsFree ? "1" : "0"); } catch {}
-    if (mic.handsFree) await mic.init().catch((err) => toast("Microphone unavailable: " + err.message));
+    if (mic.handsFree) await mic.init().catch(() => {
+      // no mic (permission off, or none here): say so instead of claiming to listen
+      mic.handsFree = false;
+      if ($("#handsFree")) $("#handsFree").checked = false;
+      toast("The microphone isn't available. Tap Next, or allow the mic and turn Always listening back on.", 5000);
+    });
     mic.onState(mic.mode);
   };
   // always listening by default: a voice companion you don't have to touch with messy hands
@@ -140,7 +146,7 @@ export async function enter(root, _params, app) {
     if (e.code === "ArrowLeft") act("back");
     if (e.key === "r") act("repeat");
   };
-  const keyup = (e) => { if (e.code === "Space" && mic.mode === "ptt") { e.preventDefault(); mic.stop(true); } };
+  const keyup = (e) => { if (e.code === "Space" && (mic.mode === "ptt" || mic.starting)) { e.preventDefault(); mic.stop(true); } };
   addEventListener("keydown", keys);
   addEventListener("keyup", keyup);
 

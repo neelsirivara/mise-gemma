@@ -1,7 +1,6 @@
 // After cooking: how did it go? Rating, quick tags, typed or spoken notes, and the real
 // step timings → Mise writes the next version of the recipe and shows what changed.
-import { getJSON, stream } from "/lib/api.js";
-import { Mic } from "/lib/voice.js";
+import { ON_PHONE, getJSON, postForm, stream } from "/lib/api.js";
 import { $, MIC_ICON, html, mins, mount, raw, toast } from "../ui.js";
 
 const TAGS = ["Perfect", "Too salty", "Too bland", "Too spicy", "Needs more heat", "Overcooked", "Undercooked",
@@ -43,7 +42,7 @@ export async function enter(root, params, app) {
           <textarea id="notes" placeholder="The sauce split a little, and I'd like it spicier next time."></textarea>
         </div>
         <div class="row">
-          <button class="btn" id="voiceBtn" style="touch-action:none">${raw(MIC_ICON.replace("<svg", '<svg width="20" height="20"'))} Hold to record a voice note</button>
+          <button class="btn hold" id="voiceBtn">${raw(MIC_ICON.replace("<svg", '<svg width="20" height="20"'))} Hold to record a voice note</button>
           <span class="muted" id="voiceState"></span>
         </div>
       </div>
@@ -64,14 +63,39 @@ export async function enter(root, params, app) {
     b.setAttribute("aria-pressed", F.tags.has(b.dataset.t));
   }));
 
-  // voice note: its own mic instance so cook-mode hands-free doesn't fire here
-  app.mic.handsFree = false;
-  const mic = new Mic();
-  mic.onUtterance = (blob, s) => { F.voice = blob; $("#voiceState").textContent = `Voice note ${s.toFixed(1)}s ✓`; };
-  mic.onState = (m) => { if (m) $("#voiceState").textContent = "Recording…"; };
+  // voice note: hold to record, and Gemma writes what you said into the notes box. Uses the app's one
+  // microphone (iOS doesn't like two at once), with hands-free off so nothing else reacts to it here.
+  const mic = app.mic;
+  mic.handsFree = false;
+  mic.blocked = () => true;
+  const state = (t) => { if ($("#voiceState")) $("#voiceState").textContent = t; };
+  mic.onState = (m) => { $("#voiceBtn")?.classList.toggle("rec", !!m); if (m) state("Recording… let go when you're done"); };
+  mic.onUtterance = async (blob, s) => {
+    state("Writing down what you said…");
+    let text = blob.transcript; // on-phone mode without audio input: the phone's speech recognizer already heard it
+    if (text === undefined) {
+      try {
+        const fd = new FormData();
+        fd.append("audio", blob, "note.wav");
+        text = (await postForm("/api/mise/transcribe", fd)).text;
+      } catch { text = ""; }
+    }
+    if (!$("#notes")) return; // left the page meanwhile
+    if (text) {
+      const box = $("#notes");
+      box.value = (box.value.trim() ? box.value.trim() + " " : "") + text;
+      box.dispatchEvent(new Event("input"));
+      F.voice = null; // the words are in the notes now
+      state("Added to your notes ✓");
+    } else {
+      F.voice = blob; // couldn't transcribe: send the recording itself
+      state(`Voice note ${s.toFixed(1)}s saved (couldn't write it down)`);
+    }
+  };
   const vb = $("#voiceBtn");
-  vb.addEventListener("pointerdown", (e) => { e.preventDefault(); app.speaker.stop(); mic.start("ptt"); });
-  ["pointerup", "pointerleave", "pointercancel"].forEach((ev) => vb.addEventListener(ev, () => mic.mode && mic.stop(true)));
+  vb.addEventListener("pointerdown", (e) => { e.preventDefault(); vb.setPointerCapture?.(e.pointerId); app.speaker.stop(); mic.start("ptt"); });
+  ["pointerup", "pointercancel", "lostpointercapture"].forEach((ev) => vb.addEventListener(ev, () => mic.stop(true)));
+  vb.addEventListener("contextmenu", (e) => e.preventDefault());
 
   async function submit(improve) {
     const notes = $("#notes").value.trim();
@@ -85,7 +109,7 @@ export async function enter(root, params, app) {
     if (F.voice) fd.append("audio", F.voice, "note.wav");
     const res = $("#result");
     res.hidden = false;
-    res.innerHTML = improve ? `<h2>Improving the recipe…</h2><div class="progress"><i></i></div><p class="muted">Gemma is rewriting it on this laptop.</p>` : `<p>Saving…</p>`;
+    res.innerHTML = improve ? `<h2>Improving the recipe…</h2><div class="progress"><i></i></div><p class="muted">Gemma is rewriting it on this ${ON_PHONE ? "phone" : "laptop"}.</p>` : `<p>Saving…</p>`;
     $("#improve").disabled = $("#justSave").disabled = true;
     try {
       const evs = await stream("/api/mise/feedback", { form: fd }, (ev) => {

@@ -42,7 +42,7 @@ export function dur(sec) {
   return `${m} minute${m !== 1 ? "s" : ""}` + (s && m < 5 ? ` ${s} seconds` : "");
 }
 
-async function transcribe(llm, audio) {
+export async function transcribe(llm, audio) {
   const out = await llm.generate({ system: "You are a precise speech transcriber.", parts: [{ audio }, { text: TRANSCRIBE }], maxTokens: 120 });
   return out.trim().replace(/^"|"$/g, "").trim();
 }
