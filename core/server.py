@@ -14,7 +14,7 @@ import time
 import webbrowser
 
 import uvicorn
-from fastapi import FastAPI, File, Form, UploadFile
+from fastapi import FastAPI, File, Form, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -35,9 +35,17 @@ _scope = {"v": None}  # APP.history_scope() value the history belongs to
 STATS: dict = {"turns": 0, "last": {}, "watch_last": {}}
 
 
+_warmed = threading.Event()
+
+
 @api.on_event("startup")
 def warm():
-    # load models in the background so the page is up immediately
+    # load models in the background so the page is up immediately. Phone mode runs this app on two
+    # servers (HTTPS for phones, http://localhost for this laptop); load the models once.
+    if _warmed.is_set():
+        return
+    _warmed.set()
+
     def _load():
         t = time.time()
         try:
@@ -57,7 +65,8 @@ def warm():
                 MEMORY.clear()
             TTS_ENGINE.warm()  # first synthesis builds the ONNX graph (~seconds); do it before anyone listens
             STATS["warm_s"] = round(time.time() - t, 1)
-            local = f"{'https' if config.PHONE else 'http'}://127.0.0.1:{config.PORT}"
+            local = (f"http://localhost:{config.LOCAL_PORT}/hub" if config.PHONE
+                     else f"http://127.0.0.1:{config.PORT}")
             print(f"  ready in {STATS['warm_s']}s -> {local}", flush=True)
             if os.environ.get("OPEN_BROWSER") == "1":
                 webbrowser.open(local)
@@ -74,8 +83,18 @@ api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
                    allow_private_network=True)  # answer browsers' private-network preflights (else 400)
 
 
+DEVICES: dict[str, dict] = {}  # phones and other browsers that reached this hub (shown on the Hub page)
+
+
+def _is_local(request) -> bool:
+    return (request.client.host if request.client else "").startswith(("127.", "::1"))
+
+
 @api.middleware("http")
 async def headers(request, call_next):
+    if request.client and not _is_local(request) and request.url.path.startswith("/api/"):
+        DEVICES[request.client.host] = {"ip": request.client.host, "agent": request.headers.get("user-agent", "")[:160],
+                                        "last": time.time()}
     resp = await call_next(request)
     path = request.url.path
     if not path.startswith(("/api", "/assets")):
@@ -277,6 +296,49 @@ def home():
     return FileResponse(config.WEB_DIR / APP.web_entry, headers={"Cache-Control": "no-store"})
 
 
+@api.get("/hub", include_in_schema=False)
+def hub_page(request: Request):
+    """The laptop's own control page: pairing QR, model status, connected phones. Laptop only."""
+    if not _is_local(request):
+        return JSONResponse({"error": "The Hub page only opens on the laptop running Mise."}, 403)
+    return FileResponse(config.WEB_DIR / "hub" / "index.html", headers={"Cache-Control": "no-store"})
+
+
+def _device_name(agent: str) -> str:
+    for key, name in (("iPhone", "iPhone"), ("iPad", "iPad"), ("Android", "Android phone"), ("Macintosh", "Mac"),
+                      ("Windows", "Windows PC")):
+        if key in agent:
+            return name
+    return "Browser"
+
+
+@api.get("/api/hub/status", include_in_schema=False)
+def hub_status(request: Request):
+    if not _is_local(request):
+        return JSONResponse({"error": "laptop only"}, 403)
+    pairing = {}
+    if config.PHONE:
+        from . import phone
+        pairing = {k: v for k, v in phone.PAIRING.items()}
+    now = time.time()
+    devices = [{"name": _device_name(d["agent"]), "ip": d["ip"], "seconds_ago": round(now - d["last"])}
+               for d in sorted(DEVICES.values(), key=lambda d: -d["last"]) if now - d["last"] < 3600]
+    t = llm._talk
+    return {"phone_mode": config.PHONE, "pairing": pairing, "devices": devices,
+            "engine": {"ready": "warm_s" in STATS, "error": STATS.get("load_error"), "talk": t.name if t else None,
+                       "voice": TTS_ENGINE.available, "turns": STATS["turns"]},
+            "local_app": f"http://localhost:{config.LOCAL_PORT}/" if config.PHONE else f"http://127.0.0.1:{config.PORT}/"}
+
+
+@api.post("/api/hub/quit", include_in_schema=False)
+def hub_quit(request: Request):
+    """Stop Mise from the Hub page (there's no terminal window when started from the shortcut). Laptop only."""
+    if not _is_local(request):
+        return JSONResponse({"error": "laptop only"}, 403)
+    threading.Timer(0.5, lambda: os._exit(0)).start()
+    return {"ok": True}
+
+
 # the UI files: web/ at the site root (same layout as a static Vercel deploy). Mounted last.
 api.mount("/", StaticFiles(directory=config.WEB_DIR, html=True), name="web")
 
@@ -289,8 +351,17 @@ if __name__ == "__main__":
     print(f"\n  {APP.name}: loading models (~30s). The page opens when ready. Keep this window open.\n", flush=True)
     if config.PHONE:
         # phone mode: HTTPS on all interfaces (iPhone camera/mic need HTTPS) + a plain-HTTP setup page
+        # plus the same app on plain http://localhost for this laptop (localhost is a secure context, no certificate needed)
         from . import phone
         cert, key = phone.prepare(config.PORT, config.SETUP_PORT)
-        uvicorn.run(api, host=config.PHONE_HOST, port=config.PORT, log_level="warning", ssl_certfile=cert, ssl_keyfile=key)
+
+        async def both():
+            phones = uvicorn.Server(uvicorn.Config(api, host=config.PHONE_HOST, port=config.PORT, log_level="warning",
+                                                   ssl_certfile=cert, ssl_keyfile=key))
+            laptop = uvicorn.Server(uvicorn.Config(api, host="127.0.0.1", port=config.LOCAL_PORT, log_level="warning"))
+            await asyncio.gather(phones.serve(), laptop.serve())
+
+        import asyncio
+        asyncio.run(both())
     else:
         uvicorn.run(api, host="127.0.0.1", port=config.PORT, log_level="warning")

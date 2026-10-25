@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Mise Hub</title>
+  <link rel="icon" type="image/png" href="/icons/favicon.png" />
+  <link rel="stylesheet" href="/fonts/fonts.css" />
+  <style>
+    /* The laptop's control page: is Mise ready, pair a phone, who's connected. Same tile palette as the app. */
+    :root {
+      --bg: #dcebdd; --plate: #fffdf7; --ink: #1f3326; --ink-2: #4c6454; --line: #cddccf;
+      --rim: #3f6e48; --rim-ink: #fffdf7; --wash: #d5e8d4; --coral: #c25b2b; --ok: #2f7a45; --bad: #c4412f;
+      --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+      --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+      color-scheme: light;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #13201a; --plate: #1b2b22; --ink: #eef4ec; --ink-2: #a8bcab; --line: #2d4234; --rim: #8fd19c;
+        --rim-ink: #13201a; --wash: #213a2a; --coral: #f5a07a; --ok: #8fd19c; --bad: #ff8a78; color-scheme: dark; }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.5 var(--body);
+      padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+    main { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 20px; }
+    header { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; }
+    .brand { display: flex; align-items: center; gap: 10px; font: 800 26px/1 var(--display); }
+    .mark { width: 26px; height: 26px; border-radius: 50%; border: 4px solid var(--rim); background: var(--plate); }
+    header .sub { color: var(--ink-2); margin-left: auto; }
+    h1, h2 { font-family: var(--display); margin: 0; line-height: 1.15; text-wrap: balance; }
+    h1 { font-size: 30px; font-weight: 800; } h2 { font-size: 20px; font-weight: 700; }
+    p { margin: 0; } .muted { color: var(--ink-2); }
+    .card { background: var(--plate); border-radius: 22px; padding: 22px; display: flex; flex-direction: column; gap: 14px;
+      box-shadow: 0 1px 2px rgb(31 51 38 / 7%), 0 12px 32px rgb(31 51 38 / 10%); }
+    .state { display: flex; align-items: center; gap: 12px; font-weight: 700; font-size: 19px; }
+    .dot { width: 14px; height: 14px; border-radius: 50%; border: 2.5px solid var(--ok); background: var(--ok); flex: none; }
+    .dot.warm { background: transparent; animation: pulse 1.2s ease-in-out infinite alternate; }
+    .dot.bad { background: transparent; border-color: var(--bad); }
+    @keyframes pulse { from { opacity: .35 } to { opacity: 1 } }
+    .btn { display: inline-flex; justify-content: center; align-items: center; min-height: 52px; padding: 12px 22px; border-radius: 14px;
+      background: var(--rim); color: var(--rim-ink); font-weight: 800; font-size: 18px; text-decoration: none; }
+    .qr { background: #fff; border-radius: 16px; padding: 14px; width: min(100%, 300px); aspect-ratio: 1; align-self: center; }
+    .qr svg { width: 100%; height: 100%; display: block; }
+    .url { font-family: Consolas, ui-monospace, monospace; font-size: 14px; color: var(--ink-2); text-align: center; word-break: break-all; }
+    ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+    .devices { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+    .devices li { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--wash); }
+    .devices .when { margin-left: auto; color: var(--ink-2); font-size: 15px; font-variant-numeric: tabular-nums; }
+    .empty { color: var(--ink-2); font-size: 15px; }
+    .quit { background: none; border: 0; color: var(--ink-2); font: inherit; text-decoration: underline; cursor: pointer; padding: 8px; }
+    @media (max-width: 760px) { main { grid-template-columns: minmax(0, 1fr); } }
+    @media (prefers-reduced-motion: reduce) { .dot.warm { animation: none; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <span class="brand"><span class="mark" aria-hidden="true"></span>Mise</span>
+      <span class="sub">Hub · running on this laptop</span>
+    </header>
+
+    <section class="card" aria-labelledby="statusTitle">
+      <h1 id="statusTitle">Mise is starting</h1>
+      <p class="state"><span class="dot warm" id="dot"></span><span id="state">Loading Gemma 4 on this laptop…</span></p>
+      <p class="muted" id="detail">The first start takes about a minute. You can pair your phone now.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <a class="btn" id="openHere" href="/">Open Mise on this laptop</a>
+        <button class="quit" id="quit">Quit Mise</button>
+      </div>
+      <h2 style="margin-top:8px">Connected phones</h2>
+      <ul class="devices" id="devices"><li class="empty">No phones yet. Scan the code to pair one.</li></ul>
+    </section>
+
+    <section class="card" aria-labelledby="pairTitle">
+      <h1 id="pairTitle">Pair your phone</h1>
+      <div class="qr" id="qr" role="img" aria-label="QR code that opens the pairing page"></div>
+      <p class="url" id="pairUrl"></p>
+      <ol>
+        <li>Make sure your phone is on the same Wi-Fi as this laptop.</li>
+        <li>Point your phone's camera at the code and tap the link.</li>
+        <li>Follow the short steps. Your phone connects by itself when it's done.</li>
+      </ol>
+      <p class="muted" id="noPhone" hidden>Phone pairing is off. Start Mise with the desktop shortcut (or run.cmd mise -Phone) to pair a phone.</p>
+    </section>
+  </main>
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const ago = (s) => s < 15 ? "now" : s < 90 ? `${s} s ago` : `${Math.round(s / 60)} min ago`;
+    let qrShown = "";
+    async function tick() {
+      let st;
+      try { st = await (await fetch("/api/hub/status", { cache: "no-store" })).json(); }
+      catch { $("dot").className = "dot bad"; $("state").textContent = "Mise isn't running"; $("statusTitle").textContent = "Mise stopped";
+        $("detail").textContent = "Start it again with the Mise shortcut on your desktop."; return; }
+      const e = st.engine;
+      $("dot").className = "dot" + (e.error ? " bad" : e.ready ? "" : " warm");
+      $("statusTitle").textContent = e.error ? "Mise couldn't start" : e.ready ? "Mise is ready" : "Mise is starting";
+      $("state").textContent = e.error ? "The models failed to load" : e.ready ? "Gemma 4 is running on this laptop" : "Loading Gemma 4 on this laptop…";
+      $("detail").textContent = e.error ? e.error : e.ready ? (e.voice ? "Voice, camera and recipes all run here, offline." : "Ready. (Neural voice isn't installed, so the browser voice is used.)")
+        : "The first start takes about a minute. You can pair your phone now.";
+      $("openHere").href = st.local_app;
+      const p = st.pairing || {};
+      $("noPhone").hidden = !!st.phone_mode;
+      if (p.qr_svg && p.pair_url !== qrShown) { $("qr").innerHTML = p.qr_svg; $("pairUrl").textContent = p.pair_url; qrShown = p.pair_url; }
+      $("devices").innerHTML = st.devices.length
+        ? st.devices.map((d) => `<li><span class="dot" style="${d.seconds_ago > 30 ? "background:transparent" : ""}"></span>${d.name} <span class="muted">${d.ip}</span><span class="when">${ago(d.seconds_ago)}</span></li>`).join("")
+        : `<li class="empty">No phones yet. Scan the code to pair one.</li>`;
+    }
+    let armed = false;
+    $("quit").onclick = async () => {
+      if (!armed) { armed = true; $("quit").textContent = "Click again to quit"; setTimeout(() => { armed = false; $("quit").textContent = "Quit Mise"; }, 3000); return; }
+      await fetch("/api/hub/quit", { method: "POST" }).catch(() => {});
+      $("quit").textContent = "Mise has stopped";
+    };
+    tick();
+    setInterval(tick, 2000);
+  </script>
+</body>
+</html>

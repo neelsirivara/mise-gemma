@@ -7,3 +7,4 @@
 *.woff2 binary
 *.png binary
 *.jpg binary
+*.command text eol=lf

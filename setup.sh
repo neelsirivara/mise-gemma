@@ -29,3 +29,5 @@ chmod +x run.sh
 echo
 echo "Done. Start Mise with:  ./run.sh mise --dual"
 echo "Phone (iPhone home-screen app):  ./run.sh mise --dual --phone   then see PHONE.md"
+chmod +x Mise.command
+echo "Double-click Mise.command (or drag it to your Dock) to start Mise."

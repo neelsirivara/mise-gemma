@@ -128,6 +128,42 @@ $$(".nav button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
 $("#homeBtn").onclick = () => app.go("pantry");
 if ("serviceWorker" in navigator && isSecureContext) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
+// The laptop announces itself as mise.local on the Wi-Fi (core/mdns.py), so a page that isn't served by
+// the hub (the hosted Vercel page) can find it without anyone typing an address.
+const AUTO_HUBS = ["https://mise.local:8443"];
+async function findHub() {
+  for (const h of AUTO_HUBS) {
+    try {
+      const r = await fetch(h + "/api/meta", { cache: "no-store", signal: AbortSignal.timeout(3000) });
+      if (r.ok) {
+        const u = new URL(location.href);
+        u.searchParams.set("hub", h);
+        location.replace(u.toString());
+        return true;
+      }
+    } catch {}
+  }
+  return false;
+}
+
+function showUnreachable() {
+  root.innerHTML = `
+    <section class="card stack" style="max-width:560px;margin:24px auto">
+      <h2>Can't find Mise on your laptop</h2>
+      <p class="muted">Mise's AI runs on your laptop, so your phone needs to reach it.</p>
+      <ol style="margin:0;padding-left:22px;display:grid;gap:8px">
+        <li>On the laptop, double-click the <b>Mise</b> icon (or check its Hub page says it's ready).</li>
+        <li>Put this phone on the <b>same Wi-Fi</b> as the laptop.</li>
+        <li>First time on this phone? Scan the code on the laptop's <b>Mise Hub</b> page to pair it.</li>
+      </ol>
+      <div class="row"><button class="btn primary" id="retryHub">Try again</button>
+        <button class="btn ghost" id="manualHub">Enter the address</button></div>
+      <p class="muted" style="font-size:14px">Still trying in the background…</p>
+    </section>`;
+  $("#retryHub").onclick = () => { app.unreachableShown = false; clearTimeout(app.retryT); boot(); };
+  $("#manualHub").onclick = openHub;
+}
+
 async function boot() {
   try {
     const meta = await getJSON("/api/meta");
@@ -137,12 +173,14 @@ async function boot() {
     }).then((r) => (r.ok ? r.arrayBuffer() : null)));
   } catch {
     if (await recoverHub()) { location.replace(location.pathname); return; } // stale remembered hub
+    if (!HUB && await findHub()) return; // e.g. the hosted page on first visit: look for the laptop by name
     setHub(false);
-    if (!app.askedHub) { app.askedHub = true; if (HUB || location.port === "") openHub(); }
-    root.innerHTML = `<div class="empty"><h2>Waiting for the Mise hub</h2><p>Start <b>run.cmd mise</b> on the laptop, or set the hub address with the button at the top.</p></div>`;
-    setTimeout(boot, 3000);
+    if (!app.unreachableShown) { app.unreachableShown = true; showUnreachable(); }
+    clearTimeout(app.retryT);
+    app.retryT = setTimeout(boot, 3000); // one retry loop, even when "Try again" is tapped
     return;
   }
+  app.unreachableShown = false;
   await app.poll();
   setInterval(() => app.poll(), 1000);
   // resume where you were (and always resume an active cook session)

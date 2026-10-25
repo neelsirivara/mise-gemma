@@ -38,3 +38,4 @@ PORT = int(os.environ.get("PORT", "8443" if PHONE else "8000"))
 SETUP_PORT = int(os.environ.get("SETUP_PORT", "8080"))  # plain HTTP: certificate + instructions
 PHONE_HOST = os.environ.get("PHONE_HOST", "0.0.0.0")  # 127.0.0.1 for local tests (no firewall prompt)
 CERT_DIR = ROOT / ".certs"
+LOCAL_PORT = int(os.environ.get("LOCAL_PORT", "8000"))  # phone mode also serves the app to this laptop on plain http://localhost
