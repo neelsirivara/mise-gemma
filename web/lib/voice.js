@@ -19,6 +19,7 @@ export class Mic {
     this.onUtterance = () => {};
     this.onLevel = () => {};
     this.onState = () => {};
+    this.recognizer = null; // set when Gemma can't take audio (on-phone browser build): see Recognizer below
   }
 
   async init() {
@@ -44,6 +45,7 @@ export class Mic {
     this.silentMs = 0;
     this.startedAt = performance.now();
     this.mode = mode;
+    this.heard = this.recognizer?.listen() ?? null;
     this.onState(mode);
   }
 
@@ -53,7 +55,12 @@ export class Mic {
     this.onState(null);
     const chunks = this.chunks;
     this.chunks = [];
-    this.#wav(chunks).then(({ blob, seconds }) => { if (send && seconds > 0.4) this.onUtterance(blob, seconds); });
+    const heard = this.heard;
+    this.heard = null;
+    this.#wav(chunks).then(async ({ blob, seconds }) => {
+      if (heard) blob.transcript = await heard.done(); // the words, for an engine that can't hear
+      if (send && seconds > 0.4) this.onUtterance(blob, seconds);
+    });
   }
 
   #frame(buf) {
@@ -133,6 +140,34 @@ export class Mic {
     return { blob: new Blob([wbuf], { type: "audio/wav" }), seconds: n / 16000 };
   }
 
+}
+
+// The phone's own speech recognizer, for on-phone mode when the browser build of Gemma can't take audio.
+// Each listen() covers one utterance (started and stopped by the Mic's VAD or the hold-to-talk button);
+// done() resolves with the words ("" if nothing was recognized). Uses on-device recognition where offered.
+export class Recognizer {
+  static supported() { return !!(window.SpeechRecognition || window.webkitSpeechRecognition); }
+
+  listen() {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const r = new SR();
+    r.lang = navigator.language || "en-US";
+    r.interimResults = false;
+    r.continuous = true;
+    try { r.processLocally = true; } catch {} // Chrome: on-device speech; ignored elsewhere
+    let text = "", ended = false, finish;
+    const over = new Promise((ok) => (finish = ok));
+    r.onresult = (e) => { text = [...e.results].filter((x) => x.isFinal).map((x) => x[0].transcript).join(" ").trim(); };
+    r.onend = r.onerror = () => { ended = true; finish(); };
+    try { r.start(); } catch { ended = true; finish(); }
+    return {
+      done: async () => {
+        if (!ended) try { r.stop(); } catch {}
+        await Promise.race([over, new Promise((ok) => setTimeout(ok, 2500))]);
+        return text;
+      },
+    };
+  }
 }
 
 export class Speaker {

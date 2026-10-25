@@ -38,6 +38,26 @@ export async function recoverHub() {
   }
 }
 
+// Where the models run: "laptop" (the hub, default) or "phone" (Gemma inside this phone: web/lib/phone).
+// ?engine=phone|laptop switches and is remembered; the Mise iOS app runs on the phone by default.
+export const ENGINE = (() => {
+  const q = new URLSearchParams(location.search).get("engine");
+  try {
+    if (q) localStorage.setItem("mise:engine", q === "native" ? "phone" : q);
+    return localStorage.getItem("mise:engine") || (window.MiseNative?.available ? "phone" : "laptop");
+  } catch {
+    return q === "phone" || q === "native" || window.MiseNative?.available ? "phone" : "laptop";
+  }
+})();
+export const ON_PHONE = ENGINE === "phone";
+
+export function switchEngine(to) {
+  try { localStorage.setItem("mise:engine", to); } catch {}
+  const u = new URL(location.href);
+  u.searchParams.delete("engine");
+  location.href = u.toString();
+}
+
 export const url = (path) => HUB + path;
 
 export class HubError extends Error {}
@@ -50,6 +70,10 @@ async function check(res) {
 }
 
 async function call(path, opts) {
+  if (ON_PHONE) {
+    const { phoneFetch } = await import("./phone/hub.js");
+    return check(await phoneFetch(path, opts));
+  }
   try {
     return await check(await fetch(url(path), opts));
   } catch (e) {

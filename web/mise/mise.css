@@ -536,3 +536,13 @@ body.camfull .cook-bar { background: linear-gradient(transparent, rgb(0 0 0 / 35
 .hub-dot[data-state="warm"] span { background: transparent; animation: hubPulse 1.2s ease-in-out infinite alternate; }
 .hub-dot[data-state="bad"] span { background: transparent; border-color: var(--tomato); }
 @keyframes hubPulse { from { opacity: .35 } to { opacity: 1 } }
+/* on-phone engine: the dot becomes a tiny phone outline (same solid / pulsing / hollow states) */
+.hub-dot[data-engine="phone"] span { width: 10px; height: 15px; border-radius: 3px; }
+
+/* "Run Gemma on this phone" setup */
+.phone-setup { max-width: 620px; margin: 24px auto; }
+.phone-setup h1 { text-wrap: balance; }
+.eyebrow { margin: 0; font-size: 13px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--rim); }
+.small { font-size: 14px; }
+.engine-pick { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.engine-pick .btn[aria-pressed="true"] { border-color: var(--rim); box-shadow: inset 0 0 0 1.5px var(--rim); }

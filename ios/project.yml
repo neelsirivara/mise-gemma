@@ -1,0 +1,85 @@
+# XcodeGen spec for the Mise iOS wrapper app.
+#
+#   brew install xcodegen      # once
+#   cd ios && xcodegen         # writes Mise.xcodeproj (git-ignored; this file is the source of truth)
+#   open Mise.xcodeproj        # pick your signing team, plug in the iPhone, Run
+#
+# Gemma 4 runs on the phone through LiteRT-LM via the community Swift package
+# john-rocky/swift-litert-lm (pinned to exactly 0.2.0). The Metal GPU backend only engages in
+# an Xcode-signed app on a physical device; the Simulator falls back to CPU.
+
+name: Mise
+
+options:
+  bundleIdPrefix: com.example
+  deploymentTarget:
+    iOS: "26.0"
+  createIntermediateGroups: true
+
+packages:
+  swift-litert-lm:
+    url: https://github.com/john-rocky/swift-litert-lm
+    exactVersion: "0.2.0"
+
+settings:
+  base:
+    # Pick your team in Xcode (Signing & Capabilities) or set it here, e.g. ABCDE12345.
+    DEVELOPMENT_TEAM: ""
+    CODE_SIGN_STYLE: Automatic
+
+targets:
+  Mise:
+    type: application
+    platform: iOS
+    sources:
+      - path: Mise
+      # The web app, copied into the bundle as a folder reference ("web/") for bundled mode
+      # and as the offline fallback when the hosted page can't be reached.
+      - path: ../web
+        type: folder
+        buildPhase: resources
+    postBuildScripts:
+      # web/ may hold local, git-ignored deploy credentials (.env*, .vercel); never ship them in the app
+      - name: Strip local secrets from the bundled web/
+        script: |
+          rm -rf "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/web/.env"* "${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/web/.vercel"
+    dependencies:
+      - package: swift-litert-lm
+        product: LiteRTFoundation
+      - package: swift-litert-lm
+        product: LiteRTLM
+    settings:
+      base:
+        PRODUCT_NAME: Mise
+        PRODUCT_BUNDLE_IDENTIFIER: com.example.mise
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: Config/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: Config/Mise.entitlements
+        SWIFT_VERSION: "6.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        SUPPORTS_MACCATALYST: NO
+        SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD: NO
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        ENABLE_PREVIEWS: YES
+        # Where the web UI comes from: "remote" (https://mise-gemma.vercel.app, default) or
+        # "bundled" (the copy of ../web inside the app, served from http://localhost by a tiny
+        # Network.framework server). Read at runtime from Info.plist key MiseWebSource.
+        # Can also be overridden per run with the MISE_WEB_SOURCE environment variable.
+        MISE_WEB_SOURCE: remote
+
+schemes:
+  Mise:
+    build:
+      targets:
+        Mise: all
+    run:
+      config: Debug
+      # Uncomment to try bundled mode or point at another https deployment without rebuilding:
+      # environmentVariables:
+      #   MISE_WEB_SOURCE: bundled
+      #   MISE_REMOTE_URL: https://your-preview.vercel.app/?engine=native
+    archive:
+      config: Release

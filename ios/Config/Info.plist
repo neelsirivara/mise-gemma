@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Mise</string>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>$(PRODUCT_BUNDLE_PACKAGE_TYPE)</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<key>UIApplicationSceneManifest</key>
+	<dict>
+		<key>UIApplicationSupportsMultipleScenes</key>
+		<false/>
+	</dict>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UIRequiredDeviceCapabilities</key>
+	<array>
+		<string>arm64</string>
+		<string>metal</string>
+	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Mise uses the camera so Gemma can look at your ingredients, pantry and cooking steps. Photos are processed on this iPhone.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Mise uses the microphone so you can talk to it hands-free while you cook. Audio is processed on this iPhone.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Mise uses speech recognition to understand spoken cooking questions and commands.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- Bundled mode serves the web app from http://localhost (Network.framework listener). -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+	<!-- Which web UI to load: "remote" or "bundled". Set by the MISE_WEB_SOURCE build setting. -->
+	<key>MiseWebSource</key>
+	<string>$(MISE_WEB_SOURCE)</string>
+</dict>
+</plist>

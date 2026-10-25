@@ -16,7 +16,7 @@ from pathlib import Path
 from core import config
 
 BOOK_DIR = config.DATA_DIR / "mise" / "recipes"
-SEED_DIR = Path(__file__).parent / "recipes"
+SEED_DIR = config.WEB_DIR / "mise" / "starters"  # shared with the on-phone engine (web/lib/phone)
 _lock = threading.RLock()
 
 # fields that define a version of the dish (snapshotted on every revision)

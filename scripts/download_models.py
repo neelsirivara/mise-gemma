@@ -2,6 +2,7 @@
 
   python scripts/download_models.py          # what the app uses: Gemma 4 E2B + EmbeddingGemma 2 + Kokoro voice (≈ 3.1 GB)
   python scripts/download_models.py --all    # + Gemma 4 E4B "quality mode" (3.7 GB) and, on Windows, the Intel NPU build
+  python scripts/download_models.py --phone  # + the browser build (2 GB) that paired phones copy to run Gemma themselves
 """
 import sys
 from pathlib import Path
@@ -14,6 +15,8 @@ FILES = [
     ("litert-community/embeddinggemma-2-text-vision-440m-litert-lm",
      "embeddinggemma-2-text-vision-440m.litertlm"),                                        # visual memory, 0.4 GB
 ]
+if "--phone" in sys.argv or "--all" in sys.argv:
+    FILES.append(("litert-community/gemma-4-E2B-it-litert-lm", "gemma-4-E2B-it-gpu.litertlm"))  # on-phone mode, 2.0 GB
 if "--all" in sys.argv:
     FILES.append(("litert-community/gemma-4-E4B-it-litert-lm", "gemma-4-E4B-it.litertlm"))  # quality mode, 3.7 GB
     if sys.platform == "win32":

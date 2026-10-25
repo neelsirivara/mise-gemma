@@ -80,6 +80,7 @@ api.mount("/assets", StaticFiles(directory=config.ROOT / "assets"), name="assets
 
 # The page may be hosted elsewhere (e.g. Vercel) and call this laptop over the LAN.
 api.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+                   expose_headers=["Content-Range", "Content-Length"],  # the phone resumes model downloads by range
                    allow_private_network=True)  # answer browsers' private-network preflights (else 400)
 
 
@@ -114,7 +115,20 @@ def meta():
     return {"id": APP.id, "name": APP.name, "tagline": APP.tagline, "accent": APP.accent,
             "quick_prompts": APP.quick_prompts, "watch_interval_s": APP.watch_interval_s,
             "speak_watch": APP.speak_watch, "attach_frame": APP.attach_frame,
-            "tts": TTS_ENGINE.available}
+            "tts": TTS_ENGINE.available, "phone_model": PHONE_MODEL if (config.MODELS_DIR / PHONE_MODEL).exists() else None}
+
+
+# The browser build of Gemma 4 for running on the phone itself (web/lib/phone): a paired phone copies it
+# from the laptop over local Wi-Fi instead of downloading 2 GB from the internet.
+PHONE_MODEL = "gemma-4-E2B-it-gpu.litertlm"
+
+
+@api.get("/models/{name}", include_in_schema=False)
+def phone_model(name: str):
+    path = config.MODELS_DIR / PHONE_MODEL
+    if name != PHONE_MODEL or not path.exists():
+        return JSONResponse({"detail": "That model isn't on this laptop. Run: python scripts/download_models.py --phone"}, 404)
+    return FileResponse(path, media_type="application/octet-stream")
 
 
 @api.post("/api/tts")
