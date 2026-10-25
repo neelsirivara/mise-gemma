@@ -51,8 +51,9 @@ export class Mic {
     if (!this.mode) return;
     this.mode = null;
     this.onState(null);
-    const { blob, seconds } = this.#wav();
-    if (send && seconds > 0.4) this.onUtterance(blob, seconds);
+    const chunks = this.chunks;
+    this.chunks = [];
+    this.#wav(chunks).then(({ blob, seconds }) => { if (send && seconds > 0.4) this.onUtterance(blob, seconds); });
   }
 
   #frame(buf) {
@@ -85,29 +86,53 @@ export class Mic {
     }
   }
 
-  #wav() {
-    const len = this.chunks.reduce((a, b) => a + b.length, 0);
-    const pcm = new Float32Array(len);
+  // 16 kHz mono WAV for Gemma. The browser's own resampler (OfflineAudioContext) low-pass filters properly;
+  // naive decimation from 48 kHz aliases and smears consonants, which hurts recognition.
+  async #wav(chunks) {
+    const len = chunks.reduce((a, b) => a + b.length, 0);
+    let pcm = new Float32Array(len);
     let o = 0;
-    for (const c of this.chunks) { pcm.set(c, o); o += c.length; }
-    const ratio = this.rate / 16000;
-    const n = Math.floor(pcm.length / ratio);
-    const out = new Int16Array(n);
-    for (let i = 0; i < n; i++) {
-      let s = 0, k = 0;
-      for (let j = Math.floor(i * ratio); j < Math.floor((i + 1) * ratio) && j < pcm.length; j++) { s += pcm[j]; k++; }
-      out[i] = Math.max(-1, Math.min(1, s / (k || 1))) * 0x7fff;
+    for (const c of chunks) { pcm.set(c, o); o += c.length; }
+    let out16 = null;
+    if (this.rate !== 16000 && typeof OfflineAudioContext !== "undefined" && len) {
+      try {
+        const off = new OfflineAudioContext(1, Math.ceil((len * 16000) / this.rate), 16000);
+        const buf = off.createBuffer(1, len, this.rate);
+        buf.copyToChannel(pcm, 0);
+        const src = off.createBufferSource();
+        src.buffer = buf;
+        src.connect(off.destination);
+        src.start();
+        out16 = (await off.startRendering()).getChannelData(0);
+      } catch {}
     }
-    const buf = new ArrayBuffer(44 + out.length * 2);
-    const dv = new DataView(buf);
-    const w = (p, s) => [...s].forEach((ch, i) => dv.setUint8(p + i, ch.charCodeAt(0)));
-    w(0, "RIFF"); dv.setUint32(4, 36 + out.length * 2, true); w(8, "WAVE"); w(12, "fmt ");
+    if (!out16) { // fallback: box-filter decimation
+      const ratio = this.rate / 16000, n = Math.floor(len / ratio);
+      out16 = new Float32Array(n);
+      for (let i = 0; i < n; i++) {
+        let s = 0, k = 0;
+        for (let j = Math.floor(i * ratio); j < Math.floor((i + 1) * ratio) && j < len; j++) { s += pcm[j]; k++; }
+        out16[i] = s / (k || 1);
+      }
+    }
+    // level: bring quiet/far speech up to a consistent peak (never above 0.7, never more than 8x gain)
+    let peak = 0;
+    for (const x of out16) peak = Math.max(peak, Math.abs(x));
+    const gain = peak > 0 ? Math.min(8, 0.7 / peak) : 1;
+    const n = out16.length;
+    const out = new Int16Array(n);
+    for (let i = 0; i < n; i++) out[i] = Math.max(-1, Math.min(1, out16[i] * gain)) * 0x7fff;
+    const wbuf = new ArrayBuffer(44 + n * 2);
+    const dv = new DataView(wbuf);
+    const w = (p, str) => [...str].forEach((ch, i) => dv.setUint8(p + i, ch.charCodeAt(0)));
+    w(0, "RIFF"); dv.setUint32(4, 36 + n * 2, true); w(8, "WAVE"); w(12, "fmt ");
     dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
     dv.setUint32(24, 16000, true); dv.setUint32(28, 32000, true); dv.setUint16(32, 2, true);
-    dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, out.length * 2, true);
-    new Int16Array(buf, 44).set(out);
-    return { blob: new Blob([buf], { type: "audio/wav" }), seconds: n / 16000 };
+    dv.setUint16(34, 16, true); w(36, "data"); dv.setUint32(40, n * 2, true);
+    new Int16Array(wbuf, 44).set(out);
+    return { blob: new Blob([wbuf], { type: "audio/wav" }), seconds: n / 16000 };
   }
+
 }
 
 export class Speaker {

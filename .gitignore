@@ -8,3 +8,5 @@ assets/ui_test/
 data/
 .claude/
 *.tmp
+.vercel/
+web/.vercel/

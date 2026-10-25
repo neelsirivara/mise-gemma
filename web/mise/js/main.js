@@ -97,23 +97,17 @@ export const app = {
   },
 };
 
+// The hub status is a small dot: solid when connected to the laptop's models, pulsing while they warm up,
+// hollow when the hub can't be reached. Details live in the tooltip / accessible label; tap it to change hubs.
 function setHub(ok, engine) {
   const p = $("#hubPill");
-  if (!ok) {
-    p.textContent = `no hub at ${HUB || location.host}`;
-    p.className = "pill pill-btn bad";
-    return;
-  }
-  const ready = engine?.ready;
-  p.textContent = engine?.load_error ? "model failed to load" : ready ? "Gemma 4 · on this laptop" : "warming up…";
-  p.className = "pill pill-btn " + (engine?.load_error ? "bad" : ready ? "ok" : "");
-  p.title = `${engine?.talk || ""}\n${engine?.watch || ""}`;
-}
-
-function updateNet() {
-  const p = $("#netPill");
-  p.textContent = navigator.onLine ? "internet not used" : "✈ fully offline";
-  p.className = "pill " + (navigator.onLine ? "" : "ok");
+  const [state, label] = !ok ? ["bad", `No Mise hub at ${HUB || location.host}. Tap to connect.`]
+    : engine?.load_error ? ["bad", "The models failed to load on the laptop."]
+    : engine?.ready ? ["ok", "Connected: Gemma 4 is running on your laptop."]
+    : ["warm", "Connected; the models are warming up."];
+  p.dataset.state = state;
+  p.setAttribute("aria-label", label);
+  p.title = label;
 }
 
 // ---------------------------------------------------------------- hub picker (for a page hosted elsewhere)
@@ -132,9 +126,6 @@ $("#hubDialog").addEventListener("close", () => {
 // ---------------------------------------------------------------- boot
 $$(".nav button").forEach((b) => (b.onclick = () => app.go(b.dataset.go)));
 $("#homeBtn").onclick = () => app.go("pantry");
-addEventListener("online", updateNet);
-addEventListener("offline", updateNet);
-updateNet();
 if ("serviceWorker" in navigator && isSecureContext) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
 async function boot() {

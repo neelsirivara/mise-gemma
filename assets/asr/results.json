@@ -1,0 +1,728 @@
+{
+ "router": [
+  [
+   "clean",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay I'm done with that step what's next"
+  ],
+  [
+   "far",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "okay i'm done with that step what's next"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay I'm done with that step what's next"
+  ],
+  [
+   "clean",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "set a timer for 90 seconds for the garlic"
+  ],
+  [
+   "far",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "set a timer for 90 seconds for the garlic"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "set a timer for 90 seconds for the garlic"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "set a timer for 90 seconds for the garlic"
+  ],
+  [
+   "clean",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "far",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "clean",
+   0.0,
+   "How long is left on the pasta?",
+   "how long is left on the pasta"
+  ],
+  [
+   "far",
+   0.0,
+   "How long is left on the pasta?",
+   "how long is left on the pasta"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How long is left on the pasta?",
+   "how long is left on the pasta"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How long is left on the pasta?",
+   "how long is left on the pasta"
+  ],
+  [
+   "clean",
+   0.0,
+   "Wait, did I already add the salt?",
+   "wait, did i already add the salt"
+  ],
+  [
+   "far",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "clean",
+   1.0,
+   "Go back one step.",
+   "Okay, what's next?"
+  ],
+  [
+   "far",
+   1.5,
+   "Go back one step.",
+   "Okay, I'm ready for the next step."
+  ],
+  [
+   "snr15",
+   1.0,
+   "Go back one step.",
+   "okay what's next"
+  ],
+  [
+   "snr5",
+   1.0,
+   "Go back one step.",
+   "okay what's next"
+  ],
+  [
+   "clean",
+   0.0,
+   "Say that again please.",
+   "say that again please"
+  ],
+  [
+   "far",
+   0.25,
+   "Say that again please.",
+   "say that again"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Say that again please.",
+   "say that again please"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Say that again please.",
+   "say that again please"
+  ],
+  [
+   "clean",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "is the chicken cooked through if it's white inside"
+  ],
+  [
+   "far",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "is the chicken cooked through if it's white inside"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "is the chicken cooked through if it's white inside"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "is the chicken cooked through if it's white inside"
+  ],
+  [
+   "clean",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "we're finished it was a bit too spicy"
+  ],
+  [
+   "far",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "we're finished it was a bit too spicy"
+  ],
+  [
+   "snr15",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "we're finished it was a bit too spicy"
+  ],
+  [
+   "snr5",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "we're finished it was a bit too spicy"
+  ],
+  [
+   "clean",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "far",
+   0.0,
+   "How much pecorino do I need?",
+   "how much pecorino do i need"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How much pecorino do I need?",
+   "how much pecorino do i need"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How much pecorino do I need?",
+   "how much pecorino do i need"
+  ]
+ ],
+ "e2b": [
+  [
+   "clean",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "far",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "far",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "clean",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "far",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "clean",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "far",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "far",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "far",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "clean",
+   0.0,
+   "Say that again please.",
+   "Say that again please."
+  ],
+  [
+   "far",
+   0.0,
+   "Say that again please.",
+   "Say that again please."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Say that again please.",
+   "Say that again please."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Say that again please.",
+   "Say that again please."
+  ],
+  [
+   "clean",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "far",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "clean",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "far",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "snr15",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "snr5",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "clean",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "far",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How much pecorino do I need?",
+   "How much Pecorino do I need?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ]
+ ],
+ "e4b": [
+  [
+   "clean",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "far",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Okay, I'm done with that step. What's next?",
+   "Okay, I'm done with that step. What's next?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "far",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Set a timer for ninety seconds for the garlic.",
+   "Set a timer for 90 seconds for the garlic."
+  ],
+  [
+   "clean",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "far",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Can I use butter instead of olive oil?",
+   "Can I use butter instead of olive oil?"
+  ],
+  [
+   "clean",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "far",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How long is left on the pasta?",
+   "How long is left on the pasta?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "far",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Wait, did I already add the salt?",
+   "Wait, did I already add the salt?"
+  ],
+  [
+   "clean",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "far",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Go back one step.",
+   "Go back one step."
+  ],
+  [
+   "clean",
+   0.0,
+   "Say that again please.",
+   "Say that again, please."
+  ],
+  [
+   "far",
+   0.0,
+   "Say that again please.",
+   "Say that again, please."
+  ],
+  [
+   "snr15",
+   0.0,
+   "Say that again please.",
+   "Say that again, please."
+  ],
+  [
+   "snr5",
+   0.0,
+   "Say that again please.",
+   "Say that again, please."
+  ],
+  [
+   "clean",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "far",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "Is the chicken cooked through if it's white inside?",
+   "Is the chicken cooked through if it's white inside?"
+  ],
+  [
+   "clean",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "far",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "snr15",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "snr5",
+   0.0,
+   "We're finished, it was a bit too spicy.",
+   "We're finished. It was a bit too spicy."
+  ],
+  [
+   "clean",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "far",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "snr15",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ],
+  [
+   "snr5",
+   0.0,
+   "How much pecorino do I need?",
+   "How much pecorino do I need?"
+  ]
+ ]
+}

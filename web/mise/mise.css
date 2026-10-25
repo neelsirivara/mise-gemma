@@ -461,3 +461,16 @@ body.cooking .top { display: none; }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* hub status dot: solid = connected to the laptop's models, pulsing = warming up, hollow = unreachable */
+.hub-dot {
+  width: 30px; height: 30px; border-radius: 50%; border: 0; background: transparent; padding: 0;
+  display: inline-grid; place-items: center; cursor: pointer; flex: none;
+}
+.hub-dot span {
+  width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--leaf); background: var(--leaf);
+  transition: background .2s, border-color .2s;
+}
+.hub-dot[data-state="warm"] span { background: transparent; animation: hubPulse 1.2s ease-in-out infinite alternate; }
+.hub-dot[data-state="bad"] span { background: transparent; border-color: var(--tomato); }
+@keyframes hubPulse { from { opacity: .35 } to { opacity: 1 } }

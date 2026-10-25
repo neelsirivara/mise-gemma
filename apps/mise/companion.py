@@ -8,11 +8,12 @@ carries the intent out deterministically. One model pass, native audio, no malfo
 """
 from __future__ import annotations
 
+import json
 import re
 import time
 from typing import Iterator
 
-from core import llm
+from core import config, llm
 from core.state import SESSION, log_action, set_timer
 
 from .cook import COOK
@@ -39,7 +40,8 @@ GUIDE = """Classify what the cook just said (audio or text) and answer if needed
   one- or two-sentence spoken answer in "answer", grounded in the recipe and the photo if one is attached. Be a
   proactive coach: give the exact amount, heat or cue, and if it helps, add what to do next.
 - feedback: they describe how the dish turned out (only after cooking). Set rating 1-5 from their words.
-- log: they report adding something ("I added the salt") so it can be remembered.
+- log: they report adding something ("I added the salt") so it can be remembered. A QUESTION about the past
+  ("did I already add the salt?") is a question, never back.
 - ignore: background talk not meant for you.
 "heard" = what they said, short. "answer" is spoken aloud: plain words, no markdown. For next/back/repeat/finish
 leave answer empty; the app narrates the step itself. Unused fields: 0 or empty string."""
@@ -53,8 +55,31 @@ def active() -> bool:
     return COOK.active or bool(COOK.awaiting_feedback)
 
 
+TRANSCRIBE = ("Transcribe exactly what the person says in this audio. Output only their words, with normal "
+              "punctuation. If there is no speech, output nothing.")
+
+
+def transcribe(audio: bytes) -> str:
+    """Hearing is its own focused pass. Asking one call to transcribe AND classify biased what it 'heard'
+    toward the intent list ("go back one step" came out as "what's next"): 11.9% word error rate vs 0%
+    for this pass on the same noisy clips (scripts/asr_eval.py)."""
+    out = "".join(e.get("text", "") for e in llm.talk().stream(
+        "You are a precise speech transcriber.", [], TRANSCRIBE, None, audio, []) if e["type"] == "text")
+    return out.strip().strip('"').strip()
+
+
 def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterator[dict]:
     """Yields the same event shapes as core.llm streams: {"type": "tool"|"text"|"heard", ...}."""
+    t_hear = time.time()
+    spoken = audio
+    if audio and not text:
+        text = transcribe(audio)
+        if not text:  # silence or a cough
+            _log_utterance(spoken, "", "ignore", round(time.time() - t_hear, 2))
+            yield {"type": "heard", "text": "", "intent": "ignore", "seconds": round(time.time() - t_hear, 2)}
+            yield {"type": "text", "text": "NOOP"}
+            return
+        audio = None  # route from the transcript; the audio has done its job
     state = COOK.summary()
     timers = "; ".join(f"{t.label}: {round(t.remaining())}s left" for t in SESSION.timers if not t.fired) or "none"
     rid = (COOK.recipe or {}).get("id")
@@ -71,12 +96,15 @@ def handle(text: str | None, image: bytes | None, audio: bytes | None) -> Iterat
               + "\n" + (f"The cook said: {text}" if text else "The cook's words are in the attached audio."))
     t0 = time.time()
     out = llm.talk().complete_json(prompt, SCHEMA, images=[image] if image else [], audio=audio, max_tokens=220)
+    if spoken:
+        out["heard"] = text  # what was actually said, not the router's paraphrase
     intent, answer = out["intent"], out["answer"].strip()
     if intent == "question" and last and _is_follow_up(out["heard"]):
         answer = _follow_up(last, out["heard"]) or answer
     if intent != "ignore":
         _memory.append((out["heard"], answer))
         del _memory[:-8]
+    _log_utterance(spoken, out["heard"], intent, round(time.time() - t_hear, 2))
     yield {"type": "heard", "text": out["heard"], "intent": intent, "seconds": round(time.time() - t0, 2)}
     yield {"type": "tool", "name": intent, "args": {k: out[k] for k in ("timer_seconds", "timer_label", "rating") if out[k]},
            "result": {"ok": True}}
@@ -135,6 +163,25 @@ def _follow_up(last: tuple[str, str], heard: str) -> str:
             "You are Mise, a concise kitchen coach.", [], prompt, None, None, []) if e["type"] == "text").strip()
     except Exception:
         return ""
+
+
+LOG_DIR = config.DATA_DIR / "mise" / "utterances"
+
+
+def _log_utterance(audio: bytes | None, heard: str, intent: str, seconds: float):
+    """Keep the last 50 spoken clips + what was heard (local only), to tune recognition on real kitchen audio."""
+    if not audio:
+        return
+    try:
+        LOG_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = time.strftime("%Y%m%d-%H%M%S")
+        (LOG_DIR / f"{stamp}.wav").write_bytes(audio)
+        with open(LOG_DIR / "log.jsonl", "a", encoding="utf-8") as f:
+            f.write(json.dumps({"t": stamp, "heard": heard, "intent": intent, "seconds": seconds}) + "\n")
+        for old in sorted(LOG_DIR.glob("*.wav"))[:-50]:
+            old.unlink(missing_ok=True)
+    except OSError:
+        pass
 
 
 def _dur(sec: float) -> str:

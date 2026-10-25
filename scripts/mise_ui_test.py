@@ -76,7 +76,10 @@ with sync_playwright() as pw:
     print("\n== home + recipe book")
     page.wait_for_selector(".recipe-row", timeout=15000)
     check("book lists starter recipes", page.locator(".recipe-row").count() >= 4)
-    check("hub pill says on this laptop", "laptop" in page.inner_text("#hubPill"), page.inner_text("#hubPill"))
+    page.wait_for_function("document.getElementById('hubPill').dataset.state === 'ok'", timeout=15000)
+    check("hub dot is solid (connected)", page.get_attribute("#hubPill", "data-state") == "ok",
+          page.get_attribute("#hubPill", "aria-label"))
+    check("no 'internet not used' pill", page.locator("#netPill").count() == 0)
     page.screenshot(path=str(OUT / "mise_home.png"))
 
     print("\n== pantry: photos + time → ideas → recipe")

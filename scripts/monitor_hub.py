@@ -48,7 +48,10 @@ while True:
     peers = phones()
     if prev_peers is not None:
         for p in peers - prev_peers:
-            say(f"phone connected from {p}")
+            if p in idle_since:  # Safari reopened its connections within 20 s: same session, not news
+                del idle_since[p]
+            else:
+                say(f"phone connected from {p}")
         for p in prev_peers - peers:
             idle_since[p] = time.time()
     # report a drop only if the device stays gone 20 s (Safari closes and reopens connections)
