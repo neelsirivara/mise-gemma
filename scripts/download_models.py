@@ -22,12 +22,24 @@ for repo, f in FILES:
     print("->", hf_hub_download(repo, f, local_dir=MODELS))
 
 # Kokoro-82M neural voice (Apache-2.0), int8 ONNX build: 92 MB + 28 MB of voice styles
+import shutil  # noqa: E402
+import ssl  # noqa: E402
 import urllib.request  # noqa: E402
 
+import certifi  # noqa: E402
+
+# python.org builds of Python on macOS ship without a CA bundle until "Install Certificates.command"
+# is run, so plain urllib fails with CERTIFICATE_VERIFY_FAILED. Use certifi's bundle (the same one
+# huggingface_hub uses) so this works on every platform.
+TLS = ssl.create_default_context(cafile=certifi.where())
 KOKORO = "https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files-v1.0/"
 (MODELS / "kokoro").mkdir(parents=True, exist_ok=True)
 for f in ["kokoro-v1.0.int8.onnx", "voices-v1.0.bin"]:
     dest = MODELS / "kokoro" / f
     if not dest.exists():
-        urllib.request.urlretrieve(KOKORO + f, dest)
+        # write to .part and rename when complete, so an interrupted download isn't kept and skipped next time
+        part = dest.with_name(dest.name + ".part")
+        with urllib.request.urlopen(KOKORO + f, context=TLS) as r, open(part, "wb") as out:
+            shutil.copyfileobj(r, out)
+        part.replace(dest)
     print("->", dest)

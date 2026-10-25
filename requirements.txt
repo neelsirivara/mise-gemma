@@ -1,6 +1,7 @@
 litert-lm-api>=0.18.1
 openvino>=2026.4 ; sys_platform == "win32"   # Intel NPU dispatch for LiteRT (Windows only)
 huggingface_hub
+certifi                   # CA bundle for the Kokoro download (macOS python.org builds have none)
 fastapi
 uvicorn[standard]
 python-multipart
