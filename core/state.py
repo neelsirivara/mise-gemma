@@ -18,6 +18,7 @@ class Timer:
     seconds: float
     ends_at: float
     fired: bool = False
+    fired_at: float = 0.0
 
     def remaining(self) -> float:
         return max(0.0, self.ends_at - time.time())
@@ -38,12 +39,19 @@ class Session:
             self.events = self.events[-200:]
 
     def tick(self):
-        """Fire finished timers. Called by the UI poll loop."""
+        """Fire finished timers, and clear them away 20 s later. Called by the UI poll loop."""
         with self.lock:
+            now = time.time()
             for t in self.timers:
                 if not t.fired and t.remaining() <= 0:
-                    t.fired = True
+                    t.fired, t.fired_at = True, now
                     self.emit("timer_done", label=t.label)
+            self.timers = [t for t in self.timers if not t.fired or now - t.fired_at < 20]
+
+    def clear_fired(self):
+        """Drop finished timers (a new cooking step starts with a clean slate)."""
+        with self.lock:
+            self.timers = [t for t in self.timers if not t.fired]
 
     def summary(self) -> str:
         with self.lock:

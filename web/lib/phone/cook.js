@@ -13,9 +13,11 @@ export const SESSION = {
     this.events.push({ id: id6(), t: t(), kind, ...data });
     this.events = this.events.slice(-200);
   },
-  tick() {
-    for (const x of this.timers) if (!x.fired && x.ends_at - t() <= 0) { x.fired = true; this.emit("timer_done", { label: x.label }); }
+  tick() { // fire finished timers, and clear them away 20 s later
+    for (const x of this.timers) if (!x.fired && x.ends_at - t() <= 0) { x.fired = true; x.fired_at = t(); this.emit("timer_done", { label: x.label }); }
+    this.timers = this.timers.filter((x) => !x.fired || t() - x.fired_at < 20);
   },
+  clearFired() { this.timers = this.timers.filter((x) => !x.fired); },
   snapshot() {
     return { timers: this.timers.map((x) => ({ id: x.id, label: x.label, remaining: Math.max(0, Math.round((x.ends_at - t()) * 10) / 10),
                                               seconds: x.seconds, fired: x.fired })),
@@ -109,6 +111,7 @@ export const COOK = {
   enter(i) {
     this.step = i;
     this.stepStartedAt = t();
+    SESSION.clearFired(); // finished timers from earlier steps don't follow you into this one
     const s = this.recipe.steps[i];
     if (s.timer && !(i in this.stepTimers)) this.stepTimers[i] = setTimer(`Step ${i + 1}: ${short(s.text)}`, s.minutes).id;
     SESSION.emit("cook", { step: i });
@@ -141,7 +144,7 @@ export const COOK = {
     const total = Math.round((t() - this.startedAt) / 60);
     this.active = false;
     this.awaitingFeedback = this.recipe.id;
-    SESSION.timers = SESSION.timers.filter((x) => x.fired);
+    SESSION.timers = []; // the meal is done; so are its timers
     this.say(`Nice work. That took ${total} minutes. How did it turn out? Tell me what you'd change, and I'll improve the recipe for next time.`, "feedback");
     SESSION.emit("cook", { step: this.step, finished: true });
     return this.state();

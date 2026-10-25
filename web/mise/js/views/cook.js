@@ -201,7 +201,7 @@ function draw() {
 function drawTimers(timers = []) {
   const el = $("#timers");
   if (!el) return;
-  const live = timers.filter((t) => !t.fired || t.remaining > -20);
+  const live = timers; // the hub clears finished timers 20 s after they ring, and when the step changes
   const C = 2 * Math.PI * 15;
   el.innerHTML = live.map((t) => {
     const frac = t.seconds ? Math.max(0, t.remaining) / t.seconds : 0;

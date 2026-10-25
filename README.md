@@ -85,6 +85,12 @@ After that, open Mise from your home screen. Its address is **https://mise.local
 when the laptop's IP address changes or you move to another network. **PHONE.md** has the full walkthrough,
 the reason for the certificate step, and troubleshooting.
 
+### No laptop? Run Gemma on the phone
+
+Tap the status dot and choose **On this phone**. Mise downloads Gemma 4 E2B (about 2 GB) once and then runs it
+on the phone: in the browser on WebGPU (`web/lib/phone/`), or natively in the Mise iPhone app (`ios/`, built on a
+Mac). The phone keeps its own recipe book. See PHONE.md.
+
 ## Architecture
 
 ```

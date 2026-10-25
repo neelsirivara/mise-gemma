@@ -66,6 +66,30 @@ There's no way around this step on iOS. Apple requires you to install the profil
 yourself, in Settings. You only do it once per phone. Restarting Mise or changing networks doesn't undo it,
 because the laptop keeps the same certificate authority.
 
+## Run Gemma on the phone itself (no laptop)
+
+Mise can also run Gemma 4 on the phone, so you can cook with no laptop and no internet. You pick this in Mise:
+tap the status dot (top right) and choose **On this phone**, or tap **Run on this phone instead** when Mise can't
+find your laptop. The dot turns into a tiny phone outline.
+
+The first time, Mise downloads Gemma 4 E2B to the phone (about 2 GB) and keeps it. If your laptop is running
+Mise and has the phone build of the model (`python scripts/download_models.py --phone`), the phone copies it from
+the laptop over Wi-Fi. Otherwise it downloads from Hugging Face. The download resumes if it's interrupted. After
+that, Mise opens straight into the app, and the recipe book lives on the phone.
+
+There are two ways to run it:
+
+| | **In the browser** (Safari / Chrome) | **The Mise iPhone app** (`ios/`) |
+|---|---|---|
+| How | Gemma on WebGPU (iOS 26 Safari, recent Chrome) | Native LiteRT-LM on the iPhone's GPU |
+| Install | Nothing, just the web app | Build it once on a Mac with Xcode (`ios/README.md`) |
+| Sees photos | If the browser runtime supports it | Yes |
+| Hears you | The phone's own speech recognizer turns your words into text | Yes, Gemma hears the audio directly |
+| Voice | The phone's built-in voice | The phone's built-in voice |
+
+The laptop is still the better choice when you have it: Gemma runs faster there, and the laptop has the
+Kokoro neural voice and visual memory.
+
 ## Using the hosted page
 
 You can also open **https://mise-gemma.vercel.app** on a paired phone. It's the same app, served from Vercel. It

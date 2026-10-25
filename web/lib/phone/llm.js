@@ -8,7 +8,7 @@ const GENAI = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.29";
 export const MODEL = {
   name: "gemma-4-E2B-it-gpu.litertlm",
   label: "Gemma 4 E2B",
-  bytes: 2_007_822_336, // refreshed from the server's Content-Length when the download starts
+  bytes: 2_008_432_640, // refreshed from the server's Content-Length when the download starts
   url: "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-gpu.litertlm",
 };
 const CACHE = "mise-model-v1";

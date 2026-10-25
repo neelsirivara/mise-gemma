@@ -123,6 +123,7 @@ class Cook:
 
     def _enter(self, i: int):
         self.step, self.step_started_at = i, time.time()
+        SESSION.clear_fired()  # finished timers from earlier steps don't follow you into this one
         s = self.recipe["steps"][i]
         if s["timer"] and i not in self.step_timers:
             set_timer(f"Step {i + 1}: {_short(s['text'])}", s["minutes"])
@@ -169,7 +170,7 @@ class Cook:
                 book.log_cook(self.recipe["id"], self.step_seconds, finished=True)
             total = round((time.time() - self.started_at) / 60)
             self.active, self.awaiting_feedback = False, self.recipe["id"]
-            SESSION.timers = [t for t in SESSION.timers if t.fired]
+            SESSION.timers = []  # the meal is done; so are its timers
             self.say(f"Nice work. That took {total} minutes. How did it turn out? Tell me what you'd change, "
                      "and I'll improve the recipe for next time.", "feedback")
             SESSION.emit("cook", step=self.step, finished=True)
