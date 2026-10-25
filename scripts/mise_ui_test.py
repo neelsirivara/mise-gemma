@@ -178,7 +178,7 @@ with sync_playwright() as pw:
     mp.wait_for_selector(".landing", timeout=15000)
     check("phone landing: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
     mp.screenshot(path=str(OUT / "mise_phone_landing.png"), full_page=True)
-    mp.click("[data-go='home']")
+    mp.click(".tabbar [data-go='home']")  # phones use the bottom tab bar
     mp.wait_for_selector(".recipe-row", timeout=15000)
     check("phone home: no sideways scroll", mp.evaluate("document.documentElement.scrollWidth <= innerWidth + 1"))
     mp.screenshot(path=str(OUT / "mise_phone_home.png"), full_page=True)
