@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mise demo film</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<style>
+  :root { --bg: #0f1a14; --ink: #f3f7f1; --muted: #a9bfae; --leaf: #8fd19c; --coral: #f5a07a; --plate: #fffdf7; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--bg); color: var(--ink);
+    font-family: "Atkinson Hyperlegible", "Segoe UI", sans-serif; }
+  body::before { content: ""; position: fixed; inset: -20%; background:
+    radial-gradient(40% 50% at 20% 30%, rgb(143 209 156 / .16), transparent 70%),
+    radial-gradient(35% 45% at 80% 70%, rgb(245 160 122 / .13), transparent 70%); animation: drift 30s ease-in-out infinite alternate; }
+  @keyframes drift { to { transform: translate(4%, -3%) rotate(4deg); } }
+  .scene { position: absolute; inset: 0; display: grid; place-items: center; opacity: 0; transform: translateY(24px) scale(.985);
+    filter: blur(8px); transition: opacity .9s ease, transform 1.1s cubic-bezier(.2,.7,.2,1), filter .9s ease; pointer-events: none; }
+  .scene.on { opacity: 1; transform: none; filter: none; }
+  h1, h2, .big { font-family: "Bricolage Grotesque", "Segoe UI", sans-serif; letter-spacing: -.02em; }
+  .title h1 { font-size: 170px; font-weight: 800; line-height: 1; display: flex; align-items: center; gap: 36px; }
+  .mark { width: 120px; height: 120px; border-radius: 50%; border: 18px solid var(--leaf); background: #f1c84b; box-shadow: 0 0 80px rgb(241 200 75 / .35); }
+  .title p { font-size: 46px; color: var(--muted); margin-top: 26px; text-align: center; }
+  .chips { display: flex; gap: 16px; justify-content: center; margin-top: 40px; }
+  .chip { padding: 12px 24px; border-radius: 999px; border: 1.5px solid rgb(143 209 156 / .5); color: var(--leaf); font-size: 26px; font-weight: 700; }
+  .hook { text-align: center; }
+  .hook .big { font-size: 110px; font-weight: 800; line-height: 1.05; }
+  .hook p { font-size: 44px; color: var(--muted); margin-top: 30px; }
+  /* phone + copy layout */
+  .split { display: grid; grid-template-columns: 560px 820px; gap: 120px; align-items: center; }
+  .phone { width: 500px; height: 1032px; transform: scale(.98); border-radius: 76px; padding: 14px; background: linear-gradient(145deg, #2a2f2c, #0b0d0c);
+    box-shadow: 0 50px 120px rgb(0 0 0 / .55), inset 0 0 0 2px #3c433f; position: relative; }
+  .screen { width: 100%; height: 100%; border-radius: 62px; overflow: hidden; position: relative; background: #dcebdd; }
+  .screen img { width: 100%; display: block; animation: pan 7s ease-in-out forwards; }
+  .scene:not(.on) .screen img { animation: none; }
+  .screen img.swap { position: absolute; inset: 0; opacity: 0; animation: swapIn 13s linear forwards; }
+  @keyframes swapIn { 0%, 55% { opacity: 0; } 62%, 100% { opacity: 1; } }
+  @keyframes pan { from { transform: translateY(0); } to { transform: translateY(var(--pan, 0px)); } }
+  .island { position: absolute; top: 30px; left: 50%; width: 150px; height: 42px; margin-left: -75px; background: #000; border-radius: 30px; z-index: 3; }
+  .status { position: absolute; top: 0; left: 0; right: 0; height: 64px; z-index: 2; display: flex; justify-content: space-between; align-items: center;
+    padding: 12px 52px 0; font: 700 22px "Segoe UI", sans-serif; color: #1f3326; background: linear-gradient(#dcebdd, rgb(220 235 221 / .85)); }
+  .screen .app { position: absolute; top: 64px; left: 0; right: 0; bottom: 0; overflow: hidden; }
+  .copy .kicker { font-size: 28px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--coral); }
+  .copy h2 { font-size: 88px; font-weight: 800; line-height: 1.02; margin-top: 18px; }
+  .copy p { font-size: 38px; color: var(--muted); margin-top: 26px; line-height: 1.35; max-width: 780px; }
+  .copy .tag { display: inline-flex; gap: 10px; align-items: center; margin-top: 34px; padding: 12px 22px; border-radius: 14px;
+    background: rgb(143 209 156 / .12); color: var(--leaf); font-size: 26px; font-weight: 700; }
+  .bubbles { display: grid; gap: 18px; margin-top: 34px; }
+  .bub { font-size: 30px; padding: 18px 26px; border-radius: 26px; max-width: 760px; opacity: 0; transform: translateY(14px); transition: all .6s ease; line-height: 1.3; }
+  .bub.on { opacity: 1; transform: none; }
+  .bub.me { background: #2b3a31; justify-self: end; border-bottom-right-radius: 8px; }
+  .bub.ai { background: var(--plate); color: #1f3326; border-bottom-left-radius: 8px; }
+  .bub small { display: block; font-size: 20px; opacity: .6; margin-bottom: 4px; font-weight: 700; }
+  /* tech */
+  .tech h2 { font-size: 84px; text-align: center; font-weight: 800; }
+  .tech .sub { font-size: 36px; color: var(--muted); text-align: center; margin-top: 16px; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; margin-top: 60px; width: 1560px; }
+  .lane { border-radius: 36px; padding: 44px 48px; background: rgb(255 255 255 / .05); border: 1.5px solid rgb(255 255 255 / .1); }
+  .lane h3 { font-family: "Bricolage Grotesque", sans-serif; font-size: 48px; display: flex; gap: 18px; align-items: center; }
+  .lane .ico { width: 54px; height: 54px; border-radius: 14px; display: grid; place-items: center; font-size: 30px; background: rgb(143 209 156 / .18); }
+  .lane ul { margin-top: 26px; padding-left: 0; list-style: none; display: grid; gap: 16px; font-size: 30px; color: #dbe7dc; }
+  .lane li::before { content: "▸ "; color: var(--leaf); }
+  .lane .note { margin-top: 26px; font-size: 26px; color: var(--coral); font-weight: 700; }
+  .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 32px; margin-top: 64px; width: 1640px; }
+  .stat { border-radius: 30px; padding: 38px 34px; background: rgb(255 255 255 / .05); border: 1.5px solid rgb(255 255 255 / .1); opacity: 0; transform: translateY(20px); transition: all .7s ease; }
+  .stat.on { opacity: 1; transform: none; }
+  .stat b { font-family: "Bricolage Grotesque", sans-serif; font-size: 72px; color: var(--leaf); display: block; line-height: 1; }
+  .stat span { font-size: 27px; color: #dbe7dc; display: block; margin-top: 16px; line-height: 1.3; }
+  .stat small { font-size: 20px; color: var(--muted); display: block; margin-top: 10px; }
+  .pipe { display: flex; gap: 22px; align-items: center; justify-content: center; margin-top: 56px; flex-wrap: wrap; width: 1700px; }
+  .node { padding: 22px 30px; border-radius: 22px; background: rgb(255 255 255 / .06); border: 1.5px solid rgb(255 255 255 / .12); font-size: 28px; text-align: center; }
+  .node b { display: block; color: var(--leaf); font-size: 22px; letter-spacing: .1em; text-transform: uppercase; margin-bottom: 6px; }
+  .arrow { color: var(--coral); font-size: 40px; }
+  .end { text-align: center; }
+  .end h1 { font-size: 150px; font-weight: 800; display: flex; align-items: center; gap: 30px; justify-content: center; }
+  .end p { font-size: 46px; color: var(--muted); margin-top: 24px; }
+  .end .url { margin-top: 44px; font: 700 34px Consolas, monospace; color: var(--leaf); }
+  .cap { position: absolute; left: 0; right: 0; bottom: 44px; text-align: center; font-size: 22px; color: rgb(169 191 174 / .7); letter-spacing: .08em; }
+  .bar { position: absolute; left: 0; bottom: 0; height: 5px; background: linear-gradient(90deg, var(--leaf), var(--coral)); width: 0; }
+</style>
+</head>
+<body>
+<!-- 1 title -->
+<section class="scene title" data-t="0" data-d="5"><div>
+  <h1><span class="mark"></span>Mise</h1>
+  <p>The sous-chef that runs on your phone.</p>
+  <div class="chips"><span class="chip">Gemma 4 E2B</span><span class="chip">LiteRT-LM</span><span class="chip">100% on-device</span></div>
+</div></section>
+<!-- 2 hook -->
+<section class="scene hook" data-d="5"><div>
+  <div class="big">“What can I cook<br>with what I've got?”</div>
+  <p>Snap your fridge. Cook hands-free. It gets better every time.</p>
+</div></section>
+
+<!-- journey -->
+<section class="scene" data-d="6"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:42</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/01_snap_your_fridge.png"></div></div></div>
+  <div class="copy"><div class="kicker">1 · Snap</div><h2>Point it at your fridge.</h2><p>Gemma 4 reads the photo on the phone: eggs, spinach, cherry tomatoes, zucchini…</p><span class="tag">Vision · on-device</span></div>
+</div></section>
+<section class="scene" data-d="5"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:42</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/02_what_you_have.png"></div></div></div>
+  <div class="copy"><div class="kicker">2 · Check</div><h2>Twelve ingredients, found.</h2><p>Fix anything it missed. Pick your time and how many you're feeding.</p></div>
+</div></section>
+<section class="scene" data-d="5"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:43</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/03_ideas.png" style="--pan:-120px"></div></div></div>
+  <div class="copy"><div class="kicker">3 · Choose</div><h2>Three dishes that fit 30 minutes.</h2><p>Made mostly from what you have, honest about anything you'd need.</p></div>
+</div></section>
+<section class="scene" data-d="5"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:43</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/04_recipe.png" style="--pan:-260px"></div></div></div>
+  <div class="copy"><div class="kicker">4 · Recipe</div><h2>A full recipe, written on the phone.</h2><p>Quantities, timed steps, and which steps are hands-off. Saved to your recipe book.</p><span class="tag">Structured JSON · schema-checked</span></div>
+</div></section>
+
+<!-- live cook mode with Mum (the real app, running) -->
+<section class="scene" data-d="13" id="liveScene"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:44</span><span>5G ▮▮▮</span></div>
+    <div class="app"><img src="/docs/screenshots/05_cook_step1.png"><img src="/docs/screenshots/06_cook_timer_and_question.png" class="swap"></div></div></div>
+  <div class="copy"><div class="kicker">5 · Cook</div><h2>Cook hands-free, with Mum.</h2>
+    <p>She talks you through every step, starts the timers, and tells you what to prep while it cooks.</p>
+    <div class="bubbles">
+      <div class="bub me" data-at="4.5"><small>You</small>“Can I use feta instead of mozzarella?”</div>
+      <div class="bub ai" data-at="6.5"><small>Mise · 1.7 s</small>Yes. Crumble 60 g of feta on top. It's saltier, so skip the salt in the eggs.</div>
+      <div class="bub me" data-at="9.5"><small>You</small>“Okay, done. What's next?”</div>
+    </div></div>
+</div></section>
+<section class="scene" data-d="5"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>6:51</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/07_cook_does_this_look_right.png"></div></div></div>
+  <div class="copy"><div class="kicker">Always listening</div><h2>“Does this look right?”</h2>
+    <div class="bubbles"><div class="bub ai on"><small>Mise · sees the pan</small>The edges are set and the centre still wobbles. Perfect. Slide it under the grill now.</div></div>
+    <p>Voice and camera go into the same Gemma call. Timers clear themselves as you move on.</p></div>
+</div></section>
+<section class="scene" data-d="5"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>7:08</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/08_how_did_it_go.png" style="--pan:-200px"></div></div></div>
+  <div class="copy"><div class="kicker">6 · Tell it how it went</div><h2>“Loved it. A little salty, middle was runny.”</h2><p>Rating, quick notes, or a voice note. Mise also logs how long each step really took.</p></div>
+</div></section>
+<section class="scene" data-d="6"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>7:09</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/10_recipe_v2.png" style="--pan:-220px"></div></div></div>
+  <div class="copy"><div class="kicker">7 · Version 2</div><h2>Every cook makes the recipe better.</h2>
+    <div class="bubbles"><div class="bub ai on">Salt ½ tsp → ¼ tsp, because it tasted a little salty</div><div class="bub ai on">Grill 4 → 6 min, because the middle was still runny</div></div>
+    <p>The old version stays in the history.</p></div>
+</div></section>
+<section class="scene" data-d="4"><div class="split">
+  <div class="phone"><div class="island"></div><div class="screen"><div class="status"><span>7:10</span><span>5G ▮▮▮</span></div><div class="app"><img src="/docs/screenshots/11_recipe_book.png"></div></div></div>
+  <div class="copy"><div class="kicker">Your recipe book</div><h2>Your dishes, tuned to your kitchen.</h2><p>Kept on your phone.</p></div>
+</div></section>
+
+<!-- tech -->
+<section class="scene tech" data-d="8"><div>
+  <h2>Two ways to run. Same app.</h2>
+  <p class="sub">Tap the status dot to choose where Gemma runs.</p>
+  <div class="two">
+    <div class="lane"><h3><span class="ico">📱</span>On this phone</h3><ul>
+      <li>Gemma 4 E2B through LiteRT-LM</li><li>iPhone GPU in the Mise iOS app, or WebGPU in the browser</li>
+      <li>2 GB model, downloaded once, resumable</li><li>No laptop, no internet, nothing leaves the phone</li></ul>
+      <div class="note">Mobile AI</div></div>
+    <div class="lane"><h3><span class="ico">💻</span>Laptop hub, for more power</h3><ul>
+      <li>LiteRT-LM on the Intel Arc GPU: talk + hearing + vision</li><li>Second Gemma on the CPU watches the counter</li>
+      <li>EmbeddingGemma 2 visual memory · Kokoro neural voice</li><li>Pair once by QR; the phone becomes camera, mic and screen</li></ul>
+      <div class="note">Stronger performance, still all local</div></div>
+  </div></div></section>
+<section class="scene tech" data-d="8"><div>
+  <h2>Built on LiteRT-LM.</h2>
+  <div class="pipe">
+    <div class="node"><b>hear</b>16 kHz WAV</div><span class="arrow">→</span>
+    <div class="node"><b>transcribe</b>Gemma 4 audio</div><span class="arrow">→</span>
+    <div class="node"><b>route</b>intent JSON</div><span class="arrow">→</span>
+    <div class="node"><b>act</b>step · timer · answer</div><span class="arrow">→</span>
+    <div class="node"><b>speak</b>sentence by sentence</div>
+  </div>
+  <div class="grid4">
+    <div class="stat" data-at="1"><b>1.7 s</b><span>voice question → first spoken word</span><small>measured, laptop GPU</small></div>
+    <div class="stat" data-at="1.6"><b>0%</b><span>word error after transcribe-first (was 11.9%)</span><small>40 noisy kitchen clips</small></div>
+    <div class="stat" data-at="2.2"><b>3–5×</b><span>faster JSON: free decode + schema check, grammar fallback</span><small>llguidance only when needed</small></div>
+    <div class="stat" data-at="2.8"><b>56 tok/s</b><span>Gemma 4 E2B on an iPhone 17 Pro GPU</span><small>LiteRT-LM published benchmark</small></div>
+  </div></div></section>
+<section class="scene hook" data-d="5"><div>
+  <div class="big">Wi-Fi off.<br>Still cooking.</div>
+  <p>Camera, voice and recipes never leave your devices.</p>
+</div></section>
+<section class="scene end" data-d="7"><div>
+  <h1><span class="mark"></span>Mise</h1>
+  <p>The sous-chef that gets better every time you cook.</p>
+  <div class="chips"><span class="chip">Mobile AI</span><span class="chip">Best Use of LiteRT</span><span class="chip">Gemma 4</span></div>
+  <div class="url">github.com/neelsirivara/mise-gemma</div>
+</div></section>
+<div class="cap" id="cap"></div>
+<div class="bar" id="bar"></div>
+
+<script>
+  const scenes = [...document.querySelectorAll(".scene")];
+  let t = 0;
+  const plan = scenes.map((s) => { const at = t; t += +s.dataset.d; return { s, at, d: +s.dataset.d }; });
+  const total = t;
+  window.FILM_SECONDS = total;
+
+  // the live app in the phone: write the frittata recipe and start cooking it, before the film starts
+  window.prepareLive = async () => {
+    const f = document.getElementById("live");
+    await new Promise((ok) => (f.contentWindow?.mise?.view ? ok() : f.addEventListener("load", () => setTimeout(ok, 1500), { once: true })));
+    const w = f.contentWindow;
+    for (let i = 0; i < 40 && !w.mise?.view; i++) await new Promise((ok) => setTimeout(ok, 250));
+    const api = await w.eval("import('/lib/api.js')");
+    const ideas = await api.postJSON("/api/mise/pantry/ideas", { items: ["eggs", "zucchini", "baby spinach", "cherry tomatoes", "mozzarella"], minutes: 30, servings: 2 });
+    const evs = await api.stream("/api/mise/pantry/recipe", { json: { idea: ideas.ideas[0], items: ["eggs"], minutes: 30, servings: 2 } });
+    const id = evs.find((e) => e.type === "done").recipe.id;
+    await api.postJSON("/api/mise/cook/start", { id });
+    await api.postJSON("/api/mise/cook/goto", { step: 1 });
+    w.mise.go("cook");
+    window.liveApi = api;
+    return true;
+  };
+
+  window.play = () => {
+    const t0 = performance.now();
+    const bar = document.getElementById("bar");
+    let liveSteps = 0;
+    (function tick() {
+      const now = (performance.now() - t0) / 1000;
+      for (const p of plan) {
+        const on = now >= p.at && now < p.at + p.d;
+        p.s.classList.toggle("on", on);
+        p.s.querySelectorAll("[data-at]").forEach((el) => el.classList.toggle("on", on && now - p.at >= +el.dataset.at));
+        if (on && p.s.id === "liveScene" && window.liveApi) {
+          const k = now - p.at;
+          if (k > 2.5 && liveSteps === 0) { liveSteps = 1; window.liveApi.postJSON("/api/mise/cook/next"); }
+          if (k > 10.5 && liveSteps === 1) { liveSteps = 2; window.liveApi.postJSON("/api/mise/cook/next"); }
+        }
+      }
+      bar.style.width = `${Math.min(100, (now / total) * 100)}%`;
+      if (now < total + 0.5) requestAnimationFrame(tick); else window.FILM_DONE = true;
+    })();
+  };
+</script>
+</body>
+</html>

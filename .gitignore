@@ -11,3 +11,6 @@ data/
 .vercel/
 web/.vercel/
 .deploy-worktree/
+
+# demo build inputs
+assets/demo/*.mjpeg
