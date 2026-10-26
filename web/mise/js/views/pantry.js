@@ -28,7 +28,6 @@ export function enter(root, params, app) {
   mount(root, html`
     <section class="landing">
       <header class="intro">
-        <p class="tagline">COOK<i>•</i>LEARN<i>•</i>SHARE</p>
         <h1>Cooking teacher like your mum</h1>
         <p class="lead">Tells you what you can cook from what you have in the fridge.</p>
       </header>
